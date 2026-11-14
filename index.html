@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Talker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&display=swap">
+<style>
+:root{--bg:#f1f5f4;--side:#e3ebea;--panel:#d6e1df;--text:#142326;--mute:#53686b;--accent:#0f766e;--on:#fff;--hover:#cfdcda;--green:#1f9d55;--red:#d6454b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#142a2d;--side:#0f2124;--panel:#0a181a;--text:#e8f1ef;--mute:#8fa8aa;--accent:#ffcf4a;--on:#1a1a10;--hover:#1d3a3e;--green:#3ddc84;--red:#ff6b70;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#142a2d;--side:#0f2124;--panel:#0a181a;--text:#e8f1ef;--mute:#8fa8aa;--accent:#ffcf4a;--on:#1a1a10;--hover:#1d3a3e;--green:#3ddc84;--red:#ff6b70;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;background:transparent;color:var(--text);padding:7px 11px}
+button:hover{background:var(--hover)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input{font:inherit;color:var(--text);background:var(--panel);border:0;border-radius:10px;padding:11px 13px}
+small{color:var(--mute);font-size:12.5px}
+.app{display:flex;height:100%;position:relative}
+.side{width:300px;flex:none;background:var(--side);display:flex;flex-direction:column}
+.brand{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;font:700 22px "Bricolage Grotesque",system-ui,sans-serif}
+.side>input{margin:0 12px 8px}
+.list{flex:1;overflow:auto;padding:0 8px}
+.row{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;cursor:pointer}
+.row:hover,.row.act{background:var(--hover)}
+.ri{min-width:0;flex:1}
+.ri b,.ri small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font:700 16px "Bricolage Grotesque",system-ui,sans-serif;position:relative}
+.av.on::after,.av.idle::after,.av.off::after{content:"";position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--side);background:var(--green)}
+.av.idle::after{background:#f0b232}
+.av.off::after{background:#80848e}
+.bd{background:var(--red);color:#fff;border-radius:10px;font-size:12px;padding:1px 7px}
+.tag{font-size:11px;background:var(--panel);color:var(--mute);padding:1px 6px;border-radius:6px;font-weight:500}
+.me{display:flex;align-items:center;gap:6px;padding:10px;background:var(--panel)}
+.mi{flex:1}
+.mi b,.mi small,.hi b,.hi small{display:block}
+button.off{color:var(--red);background:rgba(214,69,75,.15)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--hover)}
+header .av{--side:var(--bg)}
+.hi{flex:1;min-width:0}
+.hi b{font:700 17px "Bricolage Grotesque",system-ui,sans-serif}
+.back{display:none}
+.msgs{flex:1;overflow:auto;padding:8px 16px 16px}
+.m{display:flex;gap:12px;margin-top:16px}
+.m.c{margin-top:2px}
+.gap{width:40px;flex:none}
+.hd b{font-weight:600}
+.hd small{margin-left:6px}
+.t{word-break:break-word}
+.empty{margin:40px auto;text-align:center;color:var(--mute);max-width:260px}
+.typing{height:22px;padding:0 16px;font-size:12.5px;color:var(--mute)}
+.compose{display:flex;gap:8px;padding:0 16px 16px}
+.compose input{flex:1;min-width:0}
+.compose button,.callbtn{background:var(--accent);color:var(--on);font-weight:600}
+.compose button:hover,.callbtn:hover{background:var(--accent);filter:brightness(1.08)}
+.call{position:absolute;inset:0;background:var(--panel);z-index:10;display:flex;flex-direction:column}
+.call[hidden]{display:none}
+.ch{text-align:center;padding:18px 16px 0}
+.ch b{font:700 20px "Bricolage Grotesque",system-ui,sans-serif;display:block}
+.tiles{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;padding:16px;align-content:center}
+.tile{background:var(--side);border-radius:16px;min-height:130px;display:grid;place-content:center;text-align:center;border:3px solid transparent;transition:border-color .15s}
+.tile.talk{border-color:var(--green)}
+.tile .av{width:64px;height:64px;font-size:26px;margin:0 auto 6px}
+.tile.muted small::after{content:" (muted)"}
+.ctl{display:flex;justify-content:center;gap:14px;padding:8px 16px 8px}
+.ctl button{width:54px;height:54px;border-radius:50%;background:var(--side);font-size:20px}
+.ctl button.off{background:rgba(214,69,75,.2)}
+.ctl .end{background:var(--red);color:#fff}
+.note{text-align:center;padding:0 16px 16px}
+.authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
+@media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="brand">Talker <button id="newG" title="New group chat" aria-label="New group chat">＋</button></div>
+    <input id="q" placeholder="Search chats" aria-label="Search chats">
+    <div class="list" id="list"></div>
+    <div class="me">
+      <div id="myav"></div>
+      <div class="mi"><b id="un"></b><small>Online</small></div>
+      <button id="mic" title="Mute microphone" aria-label="Mute microphone">🎤</button>
+      <button id="spk" title="Deafen" aria-label="Deafen">🎧</button>
+      <button id="out" title="Log out" aria-label="Log out">⎋</button>
+    </div>
+  </aside>
+  <section class="main">
+    <header>
+      <button class="back" id="back" aria-label="Back to chats">←</button>
+      <div id="hav"></div>
+      <div class="hi"><b id="hn"></b><small id="hs"></small></div>
+      <button class="callbtn" id="call">📞 Call</button>
+    </header>
+    <div class="msgs" id="msgs"></div>
+    <div class="typing" id="typ"></div>
+    <div class="compose">
+      <input id="in" autocomplete="off" aria-label="Message">
+      <button id="send">Send</button>
+    </div>
+  </section>
+  <div class="call" id="callUI" hidden>
+    <div class="ch"><b id="cn"></b><small id="ct">Ringing…</small></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="ctl">
+      <button id="cm" title="Mute" aria-label="Mute">🎤</button>
+      <button id="cs" title="Deafen" aria-label="Deafen">🎧</button>
+      <button class="end" id="ce" title="Hang up" aria-label="Hang up">📞</button>
+    </div>
+    <div class="note"><small>Preview only. Real audio comes with the WebRTC step.</small></div>
+  </div>
+  <div class="call" id="auth">
+    <div class="authbox">
+      <div class="brand" style="padding:0">Talker</div>
+      <input id="em" type="email" placeholder="Email" autocomplete="email" aria-label="Email">
+      <input id="pw" type="password" placeholder="Password" autocomplete="current-password" aria-label="Password">
+      <input id="us" placeholder="Username (sign up only)" autocomplete="username" aria-label="Username">
+      <button class="callbtn" id="login">Log in</button>
+      <button id="signup">Create account</button>
+      <small id="ae"></small>
+    </div>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL="https://dmgzbhnixpmrshwuwawj.supabase.co",SUPABASE_KEY="sb_publishable_HdTaN-uCUg7Y2d0idefuYw_MzP5fS-N";
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
+const av=(n,cls="")=>'<div class="av '+cls+'" style="background:'+col(n)+'">'+esc(n[0])+'</div>';
+const now=()=>new Date().toTimeString().slice(0,5);
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let me,uname,D=[],cur,muted=false,deaf=false,timer,t0,names={};
+const fmt=t=>new Date(t).toTimeString().slice(0,5);
+const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id];
+function renderList(){
+  const f=$("q").value.toLowerCase();
+  $("list").innerHTML=D.filter(c=>c.name.toLowerCase().includes(f)).map(c=>{
+    const l=c.msgs[c.msgs.length-1];
+    const prev=l?(l[0]==uname?"You: ":(c.group?l[0]+": ":""))+l[1]:"No messages yet";
+    return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name)+
+      '<div class="ri"><b>'+esc(c.name)+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
+      (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
+  }).join("")||'<div class="empty">'+(D.length?"No chats match your search.":"No chats yet. Tap ＋ to start one.")+'</div>';
+}
+function renderMsgs(){
+  let h="",p=null;
+  cur.msgs.forEach(m=>{
+    h+=p&&p[0]==m[0]
+      ?'<div class="m c"><div class="gap"></div><div class="t">'+esc(m[1])+'</div></div>'
+      :'<div class="m">'+av(m[0])+'<div><div class="hd"><b>'+esc(m[0])+'</b><small>'+m[2]+'</small></div><div class="t">'+esc(m[1])+'</div></div></div>';
+    p=m;
+  });
+  $("msgs").innerHTML=h||'<div class="empty">No messages yet. Say hi to start the conversation.</div>';
+  $("msgs").scrollTop=1e9;
+}
+function open(id){
+  cur=D.find(c=>c.id==id);cur.unread=0;
+  $("app").classList.add("chat");$("call").hidden=false;$("in").disabled=false;
+  $("hav").innerHTML=av(cur.name);
+  $("hn").textContent=cur.name;
+  $("hs").textContent=cur.group?cur.members.length+" members":"Direct message";
+  $("call").textContent=cur.group?"📞 Start group call":"📞 Call";
+  $("in").placeholder="Message "+cur.name;
+  $("typ").textContent="";
+  renderMsgs();renderList();
+}
+function addMsg(m){
+  const c=D.find(x=>x.id==m.conversation_id);
+  if(!c||c.msgs.some(x=>x[3]==m.id))return;
+  c.msgs.push(tup(m));
+  if(c==cur)renderMsgs();else if(m.user_id!=me)c.unread++;
+  renderList();
+}
+async function load(){
+  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username),conversations(id,name,is_group)");
+  if(error)return alert(error.message);
+  const map={};
+  ms.forEach(r=>{
+    names[r.user_id]=r.profiles.username;
+    const c=map[r.conversation_id]||(map[r.conversation_id]={id:r.conversation_id,raw:r.conversations.name,group:r.conversations.is_group,members:[],msgs:[],unread:0});
+    c.members.push({id:r.user_id,name:r.profiles.username});
+  });
+  D=Object.values(map);
+  D.forEach(c=>c.name=c.raw||(c.group?c.members.map(m=>m.name).join(", "):(c.members.find(m=>m.id!=me)||c.members[0]).name));
+  const {data:mm}=await sb.from("messages").select("*").order("created_at",{ascending:false}).limit(1000);
+  (mm||[]).reverse().forEach(m=>{const c=D.find(x=>x.id==m.conversation_id);if(c)c.msgs.push(tup(m))});
+  cur=cur&&D.find(c=>c.id==cur.id);
+  renderList();if(cur)renderMsgs();
+}
+function listen(){
+  sb.channel("talker")
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"messages"},p=>addMsg(p.new))
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"members",filter:"user_id=eq."+me},()=>load())
+    .subscribe();
+}
+async function send(){
+  const t=$("in").value.trim();if(!t||!cur)return;
+  $("in").value="";
+  const {data,error}=await sb.from("messages").insert({conversation_id:cur.id,body:t}).select().single();
+  if(error)return alert(error.message);
+  addMsg(data);
+}
+function syncMute(){
+  [$("mic"),$("cm")].forEach(b=>b.classList.toggle("off",muted));
+  [$("spk"),$("cs")].forEach(b=>b.classList.toggle("off",deaf));
+  const y=document.querySelector(".tile.me");if(y)y.classList.toggle("muted",muted);
+}
+function startCall(){
+  const ppl=cur.members.map(m=>m.name);
+  $("cn").textContent=cur.name;
+  $("tiles").innerHTML=ppl.map(n=>'<div class="tile'+(n==uname?" me":"")+'">'+av(n)+'<b>'+esc(n)+'</b><small>Connected</small></div>').join("");
+  $("callUI").hidden=false;t0=Date.now();syncMute();
+  timer=setInterval(()=>{
+    const s=Math.floor((Date.now()-t0)/1000);
+    $("ct").textContent=s<2?"Ringing…":String(Math.floor((s-2)/60)).padStart(2,"0")+":"+String((s-2)%60).padStart(2,"0");
+    const ts=[...document.querySelectorAll(".tile")];
+    ts.forEach(t=>t.classList.remove("talk"));
+    const ok=ts.filter(t=>!(t.classList.contains("me")&&muted));
+    if(s>=2&&ok.length)ok[Math.floor(Math.random()*ok.length)].classList.add("talk");
+  },1000);
+}
+async function enter(u){
+  me=u.id;
+  const {data:p,error}=await sb.from("profiles").select("username").eq("id",me).single();
+  if(error)return $("ae").textContent=error.message;
+  uname=p.username;names[me]=uname;
+  $("un").textContent=uname;$("myav").innerHTML=av(uname,"on");
+  $("auth").hidden=true;
+  await load();listen();
+}
+$("login").onclick=async()=>{
+  const {data,error}=await sb.auth.signInWithPassword({email:$("em").value.trim(),password:$("pw").value});
+  if(error)return $("ae").textContent=error.message;
+  enter(data.user);
+};
+$("signup").onclick=async()=>{
+  const un=$("us").value.trim().toLowerCase();
+  if(!/^[a-z0-9_]{3,20}$/.test(un))return $("ae").textContent="Username: 3 to 20 letters, numbers or underscores.";
+  const {data,error}=await sb.auth.signUp({email:$("em").value.trim(),password:$("pw").value,options:{data:{username:un}}});
+  if(error)return $("ae").textContent=error.message;
+  if(!data.session)return $("ae").textContent="Check your email to confirm your account, then log in.";
+  enter(data.user);
+};
+$("out").onclick=async()=>{await sb.auth.signOut();location.reload()};
+$("list").onclick=e=>{const r=e.target.closest(".row");if(r)open(r.dataset.id)};
+$("q").oninput=renderList;
+$("send").onclick=send;
+$("in").onkeydown=e=>{if(e.key=="Enter")send()};
+$("back").onclick=()=>$("app").classList.remove("chat");
+$("call").onclick=startCall;
+$("ce").onclick=()=>{clearInterval(timer);$("callUI").hidden=true};
+$("mic").onclick=$("cm").onclick=()=>{muted=!muted;syncMute()};
+$("spk").onclick=$("cs").onclick=()=>{deaf=!deaf;syncMute()};
+$("newG").onclick=async()=>{
+  const u=prompt("Usernames to chat with (separate with commas)");if(!u)return;
+  const list=u.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);if(!list.length)return;
+  const nm=list.length>1?(prompt("Group name (optional)")||""):"";
+  const {data,error}=await sb.rpc("create_chat",{p_name:nm,p_usernames:list});
+  if(error)return alert(error.message);
+  await load();open(data);
+};
+$("msgs").innerHTML='<div class="empty">Select a chat or start a new one with ＋.</div>';
+$("call").hidden=true;$("in").disabled=true;
+if(innerWidth<=700)$("app").classList.remove("chat");
+sb.auth.getSession().then(({data})=>{if(data.session)enter(data.session.user)});
+</script>
+</body>
+</html>
