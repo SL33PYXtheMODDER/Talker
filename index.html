@@ -16,8 +16,8 @@ html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
 button{font:inherit;cursor:pointer;border:0;border-radius:10px;background:transparent;color:var(--text);padding:7px 11px}
 button:hover{background:var(--hover)}
-button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-input{font:inherit;color:var(--text);background:var(--panel);border:0;border-radius:10px;padding:11px 13px}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,textarea{font:inherit;color:var(--text);background:var(--panel);border:0;border-radius:10px;padding:11px 13px}
 small{color:var(--mute);font-size:12.5px}
 .app{display:flex;height:100%;position:relative}
 .side{width:300px;flex:none;background:var(--side);display:flex;flex-direction:column}
@@ -72,7 +72,10 @@ header .av{--side:var(--bg)}
 .ctl .end{background:var(--red);color:#fff}
 .note{text-align:center;padding:0 16px 16px}
 .av img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
-#pav .av{width:96px;height:96px;font-size:36px}
+#pav .av,#cav .av{width:96px;height:96px;font-size:36px}
+textarea{resize:none;height:84px}
+.call{overflow:auto}
+.m .av,.hd b,#hav{cursor:pointer}
 .dp{padding:9px;border-radius:12px}
 .dp.sel{outline:2px solid var(--accent)}
 .dp .av{width:34px;height:34px;font-size:14px}
@@ -103,7 +106,7 @@ header .av{--side:var(--bg)}
     <div class="list" id="list"></div>
     <div class="me">
       <div id="myav"></div>
-      <div class="mi"><b id="un"></b><small>Online</small></div>
+      <div class="mi"><b id="un"></b><small id="uh"></small></div>
       <button id="mic" title="Mute microphone" aria-label="Mute microphone">🎤</button>
       <button id="spk" title="Deafen" aria-label="Deafen">🎧</button>
       <button id="edit" title="Edit profile" aria-label="Edit profile">⚙</button>
@@ -139,6 +142,15 @@ header .av{--side:var(--bg)}
     <button class="callbtn" id="accept">Join</button>
     <button id="decline">Decline</button>
   </div>
+  <div class="call" id="card" hidden>
+    <div class="authbox" style="text-align:center">
+      <div id="cav" style="align-self:center"></div>
+      <div class="brand" id="cdn" style="padding:0;justify-content:center"></div>
+      <small id="cun"></small>
+      <div id="cbio" style="white-space:pre-wrap;word-break:break-word"></div>
+      <button id="cclose">Close</button>
+    </div>
+  </div>
   <div class="call" id="prof" hidden>
     <div class="authbox">
       <div class="brand" style="padding:0">Edit profile</div>
@@ -146,6 +158,8 @@ header .av{--side:var(--bg)}
       <label class="callbtn" style="text-align:center;padding:9px;border-radius:10px;cursor:pointer">Choose picture<input id="file" type="file" accept="image/*" hidden></label>
       <small style="text-align:center">Avatar decoration</small>
       <div id="dpick" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
+      <input id="pd" placeholder="Display name (optional)" aria-label="Display name" maxlength="32">
+      <textarea id="pb" placeholder="Bio (optional)" aria-label="Bio" maxlength="190"></textarea>
       <input id="pn" placeholder="Username" aria-label="Username" maxlength="20">
       <button class="callbtn" id="psave">Save</button>
       <button id="pclose">Cancel</button>
@@ -170,7 +184,8 @@ const SUPABASE_URL="https://dmgzbhnixpmrshwuwawj.supabase.co",SUPABASE_KEY="sb_p
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
-const pics={},decs={},DECS=["none","gold","neon","rose","aurora","rainbow","ice","crown","sparkle"];
+const pics={},decs={},disp={},bios={},DECS=["none","gold","neon","rose","aurora","rainbow","ice","crown","sparkle"];
+const dn=n=>disp[n]||n;
 const decCls=d=>d&&d!="none"&&DECS.includes(d)?" d-"+d:"";
 const av=(n,cls="",d)=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return '<div class="av '+cls+decCls(d===undefined?decs[n]:d)+'" style="background:'+col(n)+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(n[0]))+'</div>'};
 const now=()=>new Date().toTimeString().slice(0,5);
@@ -180,11 +195,11 @@ const fmt=t=>new Date(t).toTimeString().slice(0,5);
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id];
 function renderList(){
   const f=$("q").value.toLowerCase();
-  $("list").innerHTML=D.filter(c=>c.name.toLowerCase().includes(f)).map(c=>{
+  $("list").innerHTML=D.filter(c=>(c.name+" "+dn(c.name)).toLowerCase().includes(f)).map(c=>{
     const l=c.msgs[c.msgs.length-1];
-    const prev=l?(l[0]==uname?"You: ":(c.group?l[0]+": ":""))+l[1]:"No messages yet";
+    const prev=l?(l[0]==uname?"You: ":(c.group?dn(l[0])+": ":""))+l[1]:"No messages yet";
     return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name)+
-      '<div class="ri"><b>'+esc(c.name)+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
+      '<div class="ri"><b>'+esc(c.group?c.name:dn(c.name))+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
       (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
   }).join("")||'<div class="empty">'+(D.length?"No chats match your search.":"No chats yet. Tap ＋ to start one.")+'</div>';
 }
@@ -193,7 +208,7 @@ function renderMsgs(){
   cur.msgs.forEach(m=>{
     h+=p&&p[0]==m[0]
       ?'<div class="m c"><div class="gap"></div><div class="t">'+esc(m[1])+'</div></div>'
-      :'<div class="m">'+av(m[0])+'<div><div class="hd"><b>'+esc(m[0])+'</b><small>'+m[2]+'</small></div><div class="t">'+esc(m[1])+'</div></div></div>';
+      :'<div class="m" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+esc(m[1])+'</div></div></div>';
     p=m;
   });
   $("msgs").innerHTML=h||'<div class="empty">No messages yet. Say hi to start the conversation.</div>';
@@ -203,10 +218,10 @@ function open(id){
   cur=D.find(c=>c.id==id);cur.unread=0;
   $("app").classList.add("chat");$("call").hidden=false;$("in").disabled=false;
   $("hav").innerHTML=av(cur.name);
-  $("hn").textContent=cur.name;
-  $("hs").textContent=cur.group?cur.members.length+" members":"Direct message";
+  $("hn").textContent=cur.group?cur.name:dn(cur.name);
+  $("hs").textContent=cur.group?cur.members.length+" members":"@"+cur.name;
   $("call").textContent=cur.group?"📞 Start group call":"📞 Call";
-  $("in").placeholder="Message "+cur.name;
+  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name));
   $("typ").textContent="";
   renderMsgs();renderList();
 }
@@ -218,16 +233,16 @@ function addMsg(m){
   renderList();
 }
 async function load(){
-  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration),conversations(id,name,is_group)");
+  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration,display_name,bio),conversations(id,name,is_group)");
   if(error)return alert(error.message);
   const map={};
   ms.forEach(r=>{
-    names[r.user_id]=r.profiles.username;pics[r.profiles.username]=r.profiles.avatar_url;decs[r.profiles.username]=r.profiles.decoration;
+    names[r.user_id]=r.profiles.username;pics[r.profiles.username]=r.profiles.avatar_url;decs[r.profiles.username]=r.profiles.decoration;disp[r.profiles.username]=r.profiles.display_name;bios[r.profiles.username]=r.profiles.bio;
     const c=map[r.conversation_id]||(map[r.conversation_id]={id:r.conversation_id,raw:r.conversations.name,group:r.conversations.is_group,members:[],msgs:[],unread:0});
     c.members.push({id:r.user_id,name:r.profiles.username});
   });
   D=Object.values(map);
-  D.forEach(c=>c.name=c.raw||(c.group?c.members.map(m=>m.name).join(", "):(c.members.find(m=>m.id!=me)||c.members[0]).name));
+  D.forEach(c=>c.name=c.raw||(c.group?c.members.map(m=>dn(m.name)).join(", "):(c.members.find(m=>m.id!=me)||c.members[0]).name));
   const {data:mm}=await sb.from("messages").select("*").order("created_at",{ascending:false}).limit(1000);
   (mm||[]).reverse().forEach(m=>{const c=D.find(x=>x.id==m.conversation_id);if(c)c.msgs.push(tup(m))});
   cur=cur&&D.find(c=>c.id==cur.id);D.forEach(wire);
@@ -260,7 +275,7 @@ const tx=(cid,p)=>chans[cid].send({type:"broadcast",event:"sig",payload:Object.a
 function addTile(u){
   if(document.querySelector('.tile[data-u="'+u+'"]'))return;
   const n=names[u]||"Unknown";
-  $("tiles").insertAdjacentHTML("beforeend",'<div class="tile'+(u==me?" me":"")+'" data-u="'+u+'">'+av(n)+'<b>'+esc(n)+'</b><small>'+(u==me?"You":"Connecting…")+'</small></div>');
+  $("tiles").insertAdjacentHTML("beforeend",'<div class="tile'+(u==me?" me":"")+'" data-u="'+u+'">'+av(n)+'<b>'+esc(dn(n))+'</b><small>'+(u==me?"You":"Connecting…")+'</small></div>');
   syncMute();
 }
 const mark=(u,t)=>{const s=document.querySelector('.tile[data-u="'+u+'"] small');if(s)s.textContent=t};
@@ -311,7 +326,7 @@ async function sig(cid,p){
     if(call||ring)return;
     ring={cid,from:p.from};
     const c=D.find(x=>x.id==cid);
-    $("rn").textContent=names[p.from]+" is calling"+(c&&c.group?" "+c.name:"");
+    $("rn").textContent=dn(names[p.from])+" is calling"+(c&&c.group?" "+c.name:"");
     $("inc").hidden=false;
     const r=ring;setTimeout(()=>{if(ring===r)hideRing()},30000);
   }else if(p.t=="leave"){
@@ -341,7 +356,7 @@ async function begin(cid,isNew){
   try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
   catch(e){return alert("Allow microphone access to make calls.")}
   call={cid,stream,pcs:{},aud:{},iv:[],ctx:null,t0:0};
-  $("cn").textContent=D.find(x=>x.id==cid).name;
+  const cc=D.find(x=>x.id==cid);$("cn").textContent=cc.group?cc.name:dn(cc.name);
   $("tiles").innerHTML="";addTile(me);
   $("ct").textContent="Waiting for others…";
   $("callUI").hidden=false;watch(stream,me);
@@ -365,10 +380,10 @@ function leave(){
 }
 async function enter(u){
   me=u.id;
-  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
-  uname=p.username;names[me]=uname;pics[uname]=p.avatar_url;decs[uname]=p.decoration;
-  $("un").textContent=uname;$("myav").innerHTML=av(uname,"on");
+  uname=p.username;names[me]=uname;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;
+  $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
 }
@@ -409,7 +424,14 @@ if(innerWidth<=700)$("app").classList.remove("chat");
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawPick(){$("dpick").innerHTML=DECS.map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+'</button>').join("")}
 $("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
-$("edit").onclick=()=>{$("pn").value=uname;pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
+$("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("pb").value=bios[uname]||"";pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
+function card(u){
+  $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cun").textContent="@"+u;
+  $("cbio").textContent=bios[u]||"No bio yet.";$("card").hidden=false;
+}
+$("msgs").onclick=e=>{const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
+$("hav").onclick=()=>{if(cur&&!cur.group)card(cur.name)};
+$("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
 $("file").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
@@ -419,7 +441,7 @@ $("file").onchange=async e=>{
 $("psave").onclick=async()=>{
   const un=$("pn").value.trim().toLowerCase();
   if(!/^[a-z0-9_]{3,20}$/.test(un))return $("pe").textContent="Username: 3 to 20 letters, numbers or underscores.";
-  const upd={username:un,decoration:pdec=="none"?null:pdec};
+  const upd={username:un,display_name:$("pd").value.trim()||null,bio:$("pb").value.trim()||null,decoration:pdec=="none"?null:pdec};
   try{
     if(pend){
       const path=me+".jpg";
@@ -431,8 +453,8 @@ $("psave").onclick=async()=>{
     if(r.error)throw r.error;
   }catch(e){return $("pe").textContent=e.code=="23505"?"That username is taken.":e.message}
   const old=uname;uname=un;names[me]=un;
-  pics[un]=upd.avatar_url||pics[old];decs[un]=upd.decoration;pend=null;
-  $("un").textContent=un;$("myav").innerHTML=av(un,"on");
+  pics[un]=upd.avatar_url||pics[old];decs[un]=upd.decoration;disp[un]=upd.display_name;bios[un]=upd.bio;pend=null;
+  $("un").textContent=dn(un);$("uh").textContent="@"+un;$("myav").innerHTML=av(un,"on");
   $("prof").hidden=true;await load();
 };
 $("accept").onclick=accept;
