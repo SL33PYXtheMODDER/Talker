@@ -71,6 +71,10 @@ header .av{--side:var(--bg)}
 .ctl button.off{background:rgba(214,69,75,.2)}
 .ctl .end{background:var(--red);color:#fff}
 .note{text-align:center;padding:0 16px 16px}
+.av img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+#pav .av{width:96px;height:96px;font-size:36px}
+.inc{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--hover);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);width:max-content;max-width:94%}
+.inc[hidden]{display:none}
 .authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
 @media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
 @media (prefers-reduced-motion:reduce){.tile{transition:none}}
@@ -87,6 +91,7 @@ header .av{--side:var(--bg)}
       <div class="mi"><b id="un"></b><small>Online</small></div>
       <button id="mic" title="Mute microphone" aria-label="Mute microphone">🎤</button>
       <button id="spk" title="Deafen" aria-label="Deafen">🎧</button>
+      <button id="edit" title="Edit profile" aria-label="Edit profile">⚙</button>
       <button id="out" title="Log out" aria-label="Log out">⎋</button>
     </div>
   </aside>
@@ -112,7 +117,23 @@ header .av{--side:var(--bg)}
       <button id="cs" title="Deafen" aria-label="Deafen">🎧</button>
       <button class="end" id="ce" title="Hang up" aria-label="Hang up">📞</button>
     </div>
-    <div class="note"><small>Preview only. Real audio comes with the WebRTC step.</small></div>
+    <div class="note"><small>Audio goes directly between browsers.</small></div>
+  </div>
+  <div class="inc" id="inc" hidden>
+    <b id="rn"></b>
+    <button class="callbtn" id="accept">Join</button>
+    <button id="decline">Decline</button>
+  </div>
+  <div class="call" id="prof" hidden>
+    <div class="authbox">
+      <div class="brand" style="padding:0">Edit profile</div>
+      <div id="pav" style="align-self:center"></div>
+      <label class="callbtn" style="text-align:center;padding:9px;border-radius:10px;cursor:pointer">Choose picture<input id="file" type="file" accept="image/*" hidden></label>
+      <input id="pn" placeholder="Username" aria-label="Username" maxlength="20">
+      <button class="callbtn" id="psave">Save</button>
+      <button id="pclose">Cancel</button>
+      <small id="pe"></small>
+    </div>
   </div>
   <div class="call" id="auth">
     <div class="authbox">
@@ -132,10 +153,11 @@ const SUPABASE_URL="https://dmgzbhnixpmrshwuwawj.supabase.co",SUPABASE_KEY="sb_p
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
-const av=(n,cls="")=>'<div class="av '+cls+'" style="background:'+col(n)+'">'+esc(n[0])+'</div>';
+const pics={};
+const av=(n,cls="")=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return '<div class="av '+cls+'" style="background:'+col(n)+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(n[0]))+'</div>'};
 const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let me,uname,D=[],cur,muted=false,deaf=false,timer,t0,names={};
+let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null;
 const fmt=t=>new Date(t).toTimeString().slice(0,5);
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id];
 function renderList(){
@@ -178,11 +200,11 @@ function addMsg(m){
   renderList();
 }
 async function load(){
-  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username),conversations(id,name,is_group)");
+  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url),conversations(id,name,is_group)");
   if(error)return alert(error.message);
   const map={};
   ms.forEach(r=>{
-    names[r.user_id]=r.profiles.username;
+    names[r.user_id]=r.profiles.username;pics[r.profiles.username]=r.profiles.avatar_url;
     const c=map[r.conversation_id]||(map[r.conversation_id]={id:r.conversation_id,raw:r.conversations.name,group:r.conversations.is_group,members:[],msgs:[],unread:0});
     c.members.push({id:r.user_id,name:r.profiles.username});
   });
@@ -190,7 +212,7 @@ async function load(){
   D.forEach(c=>c.name=c.raw||(c.group?c.members.map(m=>m.name).join(", "):(c.members.find(m=>m.id!=me)||c.members[0]).name));
   const {data:mm}=await sb.from("messages").select("*").order("created_at",{ascending:false}).limit(1000);
   (mm||[]).reverse().forEach(m=>{const c=D.find(x=>x.id==m.conversation_id);if(c)c.msgs.push(tup(m))});
-  cur=cur&&D.find(c=>c.id==cur.id);
+  cur=cur&&D.find(c=>c.id==cur.id);D.forEach(wire);
   renderList();if(cur)renderMsgs();
 }
 function listen(){
@@ -210,26 +232,124 @@ function syncMute(){
   [$("mic"),$("cm")].forEach(b=>b.classList.toggle("off",muted));
   [$("spk"),$("cs")].forEach(b=>b.classList.toggle("off",deaf));
   const y=document.querySelector(".tile.me");if(y)y.classList.toggle("muted",muted);
+  if(call){call.stream.getAudioTracks().forEach(t=>t.enabled=!muted);Object.values(call.aud).forEach(a=>a.muted=deaf)}
 }
-function startCall(){
-  const ppl=cur.members.map(m=>m.name);
-  $("cn").textContent=cur.name;
-  $("tiles").innerHTML=ppl.map(n=>'<div class="tile'+(n==uname?" me":"")+'">'+av(n)+'<b>'+esc(n)+'</b><small>Connected</small></div>').join("");
-  $("callUI").hidden=false;t0=Date.now();syncMute();
-  timer=setInterval(()=>{
-    const s=Math.floor((Date.now()-t0)/1000);
-    $("ct").textContent=s<2?"Ringing…":String(Math.floor((s-2)/60)).padStart(2,"0")+":"+String((s-2)%60).padStart(2,"0");
-    const ts=[...document.querySelectorAll(".tile")];
-    ts.forEach(t=>t.classList.remove("talk"));
-    const ok=ts.filter(t=>!(t.classList.contains("me")&&muted));
-    if(s>=2&&ok.length)ok[Math.floor(Math.random()*ok.length)].classList.add("talk");
-  },1000);
+function wire(c){
+  if(chans[c.id])return;
+  chans[c.id]=sb.channel("call:"+c.id).on("broadcast",{event:"sig"},({payload:p})=>sig(c.id,p)).subscribe();
+}
+const tx=(cid,p)=>chans[cid].send({type:"broadcast",event:"sig",payload:Object.assign({from:me},p)});
+function addTile(u){
+  if(document.querySelector('.tile[data-u="'+u+'"]'))return;
+  const n=names[u]||"Unknown";
+  $("tiles").insertAdjacentHTML("beforeend",'<div class="tile'+(u==me?" me":"")+'" data-u="'+u+'">'+av(n)+'<b>'+esc(n)+'</b><small>'+(u==me?"You":"Connecting…")+'</small></div>');
+  syncMute();
+}
+const mark=(u,t)=>{const s=document.querySelector('.tile[data-u="'+u+'"] small');if(s)s.textContent=t};
+function watch(s,u){
+  try{
+    call.ctx=call.ctx||new AudioContext();
+    const an=call.ctx.createAnalyser();an.fftSize=256;
+    call.ctx.createMediaStreamSource(s).connect(an);
+    const d=new Uint8Array(an.frequencyBinCount);
+    call.iv.push(setInterval(()=>{
+      an.getByteTimeDomainData(d);let m=0;d.forEach(v=>m=Math.max(m,Math.abs(v-128)));
+      const t=document.querySelector('.tile[data-u="'+u+'"]');if(t)t.classList.toggle("talk",m>12);
+    },150));
+  }catch(e){}
+}
+function mkpc(u){
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+  pc._q=[];
+  call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));
+  pc.onicecandidate=e=>e.candidate&&tx(call.cid,{t:"ice",to:u,c:e.candidate});
+  pc.ontrack=e=>{
+    let a=call.aud[u];if(!a){a=new Audio();a.autoplay=true;call.aud[u]=a}
+    a.srcObject=e.streams[0];a.muted=deaf;watch(e.streams[0],u);
+  };
+  pc.onconnectionstatechange=()=>{
+    if(!call||call.pcs[u]!==pc)return;
+    if(pc.connectionState=="connected")mark(u,"Connected");
+    if(pc.connectionState=="failed"||pc.connectionState=="closed")drop(u);
+  };
+  call.pcs[u]=pc;addTile(u);return pc;
+}
+function drop(u){
+  if(!call)return;
+  const pc=call.pcs[u];if(pc){delete call.pcs[u];pc.close()}
+  if(call.aud[u]){call.aud[u].srcObject=null;delete call.aud[u]}
+  const t=document.querySelector('.tile[data-u="'+u+'"]');if(t)t.remove();
+}
+const flushQ=pc=>{pc._q.forEach(c=>pc.addIceCandidate(c).catch(()=>{}));pc._q=[]};
+async function offerTo(u){
+  if(call.pcs[u])drop(u);
+  const pc=mkpc(u);
+  await pc.setLocalDescription(await pc.createOffer());
+  tx(call.cid,{t:"offer",to:u,sdp:pc.localDescription});
+}
+async function sig(cid,p){
+  if(!p||p.from==me||(p.to&&p.to!=me)||!names[p.from])return;
+  if(p.t=="ring"){
+    if(call||ring)return;
+    ring={cid,from:p.from};
+    const c=D.find(x=>x.id==cid);
+    $("rn").textContent=names[p.from]+" is calling"+(c&&c.group?" "+c.name:"");
+    $("inc").hidden=false;
+    const r=ring;setTimeout(()=>{if(ring===r)hideRing()},30000);
+  }else if(p.t=="leave"){
+    if(ring&&ring.cid==cid&&ring.from==p.from)hideRing();
+    if(call&&call.cid==cid)drop(p.from);
+  }else if(!call||call.cid!=cid)return;
+  else if(p.t=="join")offerTo(p.from);
+  else if(p.t=="offer"){
+    if(call.pcs[p.from])drop(p.from);
+    const pc=mkpc(p.from);
+    await pc.setRemoteDescription(p.sdp);flushQ(pc);
+    await pc.setLocalDescription(await pc.createAnswer());
+    tx(cid,{t:"answer",to:p.from,sdp:pc.localDescription});
+  }else if(p.t=="answer"){
+    const pc=call.pcs[p.from];if(!pc)return;
+    await pc.setRemoteDescription(p.sdp);flushQ(pc);
+  }else if(p.t=="ice"){
+    const pc=call.pcs[p.from];if(!pc)return;
+    pc.remoteDescription?pc.addIceCandidate(p.c).catch(()=>{}):pc._q.push(p.c);
+  }
+}
+function hideRing(){ring=null;$("inc").hidden=true}
+function accept(){const r=ring;hideRing();if(r)begin(r.cid,false)}
+async function begin(cid,isNew){
+  if(call)return;
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){return alert("Allow microphone access to make calls.")}
+  call={cid,stream,pcs:{},aud:{},iv:[],ctx:null,t0:0};
+  $("cn").textContent=D.find(x=>x.id==cid).name;
+  $("tiles").innerHTML="";addTile(me);
+  $("ct").textContent="Waiting for others…";
+  $("callUI").hidden=false;watch(stream,me);
+  call.iv.push(setInterval(()=>{
+    const n=Object.values(call.pcs).filter(p=>p.connectionState=="connected").length;
+    if(!n){call.t0=0;$("ct").textContent=Object.keys(call.pcs).length?"Connecting…":"Waiting for others…";return}
+    call.t0=call.t0||Date.now();
+    const s=Math.floor((Date.now()-call.t0)/1000);
+    $("ct").textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
+  },1000));
+  tx(cid,{t:isNew?"ring":"join"});
+}
+function leave(){
+  if(!call)return;
+  tx(call.cid,{t:"leave"});
+  Object.keys(call.pcs).forEach(drop);
+  call.iv.forEach(clearInterval);
+  call.stream.getTracks().forEach(t=>t.stop());
+  if(call.ctx)call.ctx.close();
+  call=null;$("callUI").hidden=true;
 }
 async function enter(u){
   me=u.id;
-  const {data:p,error}=await sb.from("profiles").select("username").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
-  uname=p.username;names[me]=uname;
+  uname=p.username;names[me]=uname;pics[uname]=p.avatar_url;
   $("un").textContent=uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
@@ -253,8 +373,8 @@ $("q").oninput=renderList;
 $("send").onclick=send;
 $("in").onkeydown=e=>{if(e.key=="Enter")send()};
 $("back").onclick=()=>$("app").classList.remove("chat");
-$("call").onclick=startCall;
-$("ce").onclick=()=>{clearInterval(timer);$("callUI").hidden=true};
+$("call").onclick=()=>ring&&ring.cid==cur.id?accept():begin(cur.id,true);
+$("ce").onclick=leave;
 $("mic").onclick=$("cm").onclick=()=>{muted=!muted;syncMute()};
 $("spk").onclick=$("cs").onclick=()=>{deaf=!deaf;syncMute()};
 $("newG").onclick=async()=>{
@@ -268,6 +388,36 @@ $("newG").onclick=async()=>{
 $("msgs").innerHTML='<div class="empty">Select a chat or start a new one with ＋.</div>';
 $("call").hidden=true;$("in").disabled=true;
 if(innerWidth<=700)$("app").classList.remove("chat");
+function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
+$("edit").onclick=()=>{$("pn").value=uname;$("pav").innerHTML=av(uname);pend=null;$("pe").textContent="";$("prof").hidden=false};
+$("pclose").onclick=()=>$("prof").hidden=true;
+$("file").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{pend=await shrink(f)}catch(x){return $("pe").textContent=x.message}
+  $("pav").innerHTML='<div class="av" style="background:#555"><img alt="" src="'+URL.createObjectURL(pend)+'"></div>';
+};
+$("psave").onclick=async()=>{
+  const un=$("pn").value.trim().toLowerCase();
+  if(!/^[a-z0-9_]{3,20}$/.test(un))return $("pe").textContent="Username: 3 to 20 letters, numbers or underscores.";
+  const upd={username:un};
+  try{
+    if(pend){
+      const path=me+".jpg";
+      const r=await sb.storage.from("avatars").upload(path,pend,{upsert:true,contentType:"image/jpeg"});
+      if(r.error)throw r.error;
+      upd.avatar_url=sb.storage.from("avatars").getPublicUrl(path).data.publicUrl+"?v="+Date.now();
+    }
+    const r=await sb.from("profiles").update(upd).eq("id",me);
+    if(r.error)throw r.error;
+  }catch(e){return $("pe").textContent=e.code=="23505"?"That username is taken.":e.message}
+  const old=uname;uname=un;names[me]=un;
+  pics[un]=upd.avatar_url||pics[old];pend=null;
+  $("un").textContent=un;$("myav").innerHTML=av(un,"on");
+  $("prof").hidden=true;await load();
+};
+$("accept").onclick=accept;
+$("decline").onclick=hideRing;
+addEventListener("pagehide",leave);
 sb.auth.getSession().then(({data})=>{if(data.session)enter(data.session.user)});
 </script>
 </body>
