@@ -76,6 +76,17 @@ header .av{--side:var(--bg)}
 textarea{resize:none;height:84px}
 .call{overflow:auto}
 .m .av,.hd b,#hav{cursor:pointer}
+.pic{display:block;max-width:min(320px,100%);max-height:260px;border-radius:10px;margin-top:4px;cursor:zoom-in;background:var(--panel)}
+.pic:not([src]){width:200px;height:140px}
+.compose #att{background:var(--panel);color:var(--text)}
+#stage{flex:2;min-height:0;padding:8px 16px;display:flex;flex-direction:column;gap:8px;overflow:auto}
+#stage[hidden]{display:none}
+.sv{display:flex;flex-direction:column;gap:4px;flex:1;min-height:0}
+#stage video{width:100%;flex:1;min-height:0;background:#000;border-radius:12px;object-fit:contain}
+#stage:not([hidden])~.tiles{flex:none;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));padding:8px 16px}
+#stage:not([hidden])~.tiles .tile{min-height:0;padding:6px}
+#stage:not([hidden])~.tiles .av{width:36px;height:36px;font-size:14px;margin-bottom:2px}
+.ctl button.on{background:var(--accent);color:var(--on)}
 .ban{height:100px;position:relative;overflow:hidden;background:var(--hover)}
 .ban.mini{height:34px;width:60px;border-radius:8px}
 #pban .ban{height:70px;border-radius:12px}
@@ -144,16 +155,20 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
     <div class="msgs" id="msgs"></div>
     <div class="typing" id="typ"></div>
     <div class="compose">
+      <button id="att" title="Send an image" aria-label="Send an image">📎</button>
+      <input id="imgf" type="file" accept="image/*" hidden>
       <input id="in" autocomplete="off" aria-label="Message">
       <button id="send">Send</button>
     </div>
   </section>
   <div class="call" id="callUI" hidden>
     <div class="ch"><b id="cn"></b><small id="ct">Ringing…</small></div>
+    <div id="stage" hidden></div>
     <div class="tiles" id="tiles"></div>
     <div class="ctl">
       <button id="cm" title="Mute" aria-label="Mute">🎤</button>
       <button id="cs" title="Deafen" aria-label="Deafen">🎧</button>
+      <button id="cx" title="Share screen" aria-label="Share screen">🖥️</button>
       <button class="end" id="ce" title="Hang up" aria-label="Hang up">📞</button>
     </div>
     <div class="note"><small>Audio goes directly between browsers.</small></div>
@@ -205,6 +220,7 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
       <small id="ae"></small>
     </div>
   </div>
+  <div class="call" id="lb" hidden style="background:rgba(0,0,0,.88);align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:96%;max-height:92%;border-radius:8px"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
@@ -222,12 +238,13 @@ const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"};
 const fmt=t=>new Date(t).toTimeString().slice(0,5);
-const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id];
+const mb=m=>esc(m[1]||"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"");
+const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path];
 function renderList(){
   const f=$("q").value.toLowerCase();
   $("list").innerHTML=D.filter(c=>(c.name+" "+dn(c.name)).toLowerCase().includes(f)).map(c=>{
     const l=c.msgs[c.msgs.length-1];
-    const prev=l?(l[0]==uname?"You: ":(c.group?dn(l[0])+": ":""))+l[1]:"No messages yet";
+    const prev=l?(l[0]==uname?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||"📷 Photo"):"No messages yet";
     return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name)+
       '<div class="ri"><b>'+esc(c.group?c.name:dn(c.name))+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
       (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
@@ -237,12 +254,12 @@ function renderMsgs(){
   let h="",p=null;
   cur.msgs.forEach(m=>{
     h+=p&&p[0]==m[0]
-      ?'<div class="m c"><div class="gap"></div><div class="t">'+esc(m[1])+'</div></div>'
-      :'<div class="m" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+esc(m[1])+'</div></div></div>';
+      ?'<div class="m c"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
+      :'<div class="m" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
     p=m;
   });
   $("msgs").innerHTML=h||'<div class="empty">No messages yet. Say hi to start the conversation.</div>';
-  $("msgs").scrollTop=1e9;
+  $("msgs").scrollTop=1e9;hydrate();
 }
 function open(id){
   cur=D.find(c=>c.id==id);cur.unread=0;
@@ -325,8 +342,10 @@ function mkpc(u){
   const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
   pc._q=[];
   call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));
+  if(call.screen)pc._ss=pc.addTrack(call.screen.getVideoTracks()[0],call.screen);
   pc.onicecandidate=e=>e.candidate&&tx(call.cid,{t:"ice",to:u,c:e.candidate});
   pc.ontrack=e=>{
+    if(e.track.kind=="video"){const st=e.streams[0];showScreen(u,st);st.onremovetrack=()=>hideScreen(u);e.track.onmute=()=>hideScreen(u);e.track.onunmute=()=>showScreen(u,st);return}
     let a=call.aud[u];if(!a){a=new Audio();a.autoplay=true;call.aud[u]=a}
     a.srcObject=e.streams[0];a.muted=deaf;watch(e.streams[0],u);
   };
@@ -339,7 +358,7 @@ function mkpc(u){
 }
 function drop(u){
   if(!call)return;
-  const pc=call.pcs[u];if(pc){delete call.pcs[u];pc.close()}
+  const pc=call.pcs[u];if(pc){delete call.pcs[u];pc.close()}hideScreen(u);
   if(call.aud[u]){call.aud[u].srcObject=null;delete call.aud[u]}
   const t=document.querySelector('.tile[data-u="'+u+'"]');if(t)t.remove();
 }
@@ -365,8 +384,9 @@ async function sig(cid,p){
   }else if(!call||call.cid!=cid)return;
   else if(p.t=="join")offerTo(p.from);
   else if(p.t=="offer"){
-    if(call.pcs[p.from])drop(p.from);
-    const pc=mkpc(p.from);
+    let pc=call.pcs[p.from];
+    if(pc&&pc.signalingState!="stable"&&me>p.from)return;
+    if(!pc)pc=mkpc(p.from);
     await pc.setRemoteDescription(p.sdp);flushQ(pc);
     await pc.setLocalDescription(await pc.createAnswer());
     tx(cid,{t:"answer",to:p.from,sdp:pc.localDescription});
@@ -405,8 +425,10 @@ function leave(){
   Object.keys(call.pcs).forEach(drop);
   call.iv.forEach(clearInterval);
   call.stream.getTracks().forEach(t=>t.stop());
+  if(call.screen)call.screen.getTracks().forEach(t=>t.stop());
+  $("stage").innerHTML="";$("stage").hidden=true;
   if(call.ctx)call.ctx.close();
-  call=null;$("callUI").hidden=true;
+  call=null;$("cx").classList.remove("on");$("callUI").hidden=true;
 }
 async function enter(u){
   me=u.id;
@@ -451,6 +473,66 @@ $("newG").onclick=async()=>{
 $("msgs").innerHTML='<div class="empty">Select a chat or start a new one with ＋.</div>';
 $("call").hidden=true;$("in").disabled=true;
 if(innerWidth<=700)$("app").classList.remove("chat");
+const urls={};
+const signed=p=>urls[p]||(urls[p]=sb.storage.from("chat-images").createSignedUrl(p,86400).then(r=>r.data&&r.data.signedUrl));
+function hydrate(){
+  document.querySelectorAll("#msgs img[data-p]").forEach(i=>signed(i.dataset.p).then(u=>{
+    if(!u)return;
+    i.onload=()=>{const m=$("msgs");if(m.scrollHeight-m.scrollTop-m.clientHeight<400)m.scrollTop=1e9};
+    i.src=u;
+  }));
+}
+function fit(f,max){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext("2d").drawImage(i,0,0,c.width,c.height);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
+async function sendImg(f){
+  if(!cur||!f.type.startsWith("image/"))return;
+  const c=cur,cap=$("in").value.trim()||null;
+  try{
+    const b=await fit(f,1280),path=c.id+"/"+crypto.randomUUID()+".jpg";
+    let r=await sb.storage.from("chat-images").upload(path,b,{contentType:"image/jpeg"});
+    if(r.error)throw r.error;
+    r=await sb.from("messages").insert({conversation_id:c.id,body:cap,image_path:path}).select().single();
+    if(r.error)throw r.error;
+    $("in").value="";addMsg(r.data);
+  }catch(e){alert(e.message)}
+}
+$("att").onclick=()=>$("imgf").click();
+$("imgf").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendImg(f)};
+$("in").onpaste=e=>{const f=[...(e.clipboardData&&e.clipboardData.files||[])].find(x=>x.type.startsWith("image/"));if(f){e.preventDefault();sendImg(f)}};
+$("lb").onclick=()=>$("lb").hidden=true;
+function showScreen(u,s){
+  let v=document.querySelector('#stage [data-u="'+u+'"]');
+  if(!v){
+    $("stage").insertAdjacentHTML("beforeend",'<div class="sv" data-u="'+u+'"><small>'+esc(u==me?"You are sharing your screen":dn(names[u])+" is sharing their screen")+'</small><video autoplay playsinline muted></video></div>');
+    v=document.querySelector('#stage [data-u="'+u+'"]');
+  }
+  v.querySelector("video").srcObject=s;$("stage").hidden=false;
+}
+function hideScreen(u){
+  const v=document.querySelector('#stage [data-u="'+u+'"]');if(v)v.remove();
+  if(!$("stage").children.length)$("stage").hidden=true;
+}
+async function reneg(u,pc){
+  try{await pc.setLocalDescription(await pc.createOffer());tx(call.cid,{t:"offer",to:u,sdp:pc.localDescription})}catch(e){}
+}
+function stopShare(){
+  if(!call||!call.screen)return;
+  call.screen.getTracks().forEach(t=>t.stop());
+  Object.entries(call.pcs).forEach(([u,pc])=>{if(pc._ss){try{pc.removeTrack(pc._ss)}catch(e){}pc._ss=null;reneg(u,pc)}});
+  call.screen=null;hideScreen(me);$("cx").classList.remove("on");
+}
+async function share(){
+  if(!call)return;
+  if(call.screen)return stopShare();
+  let s;
+  try{s=await navigator.mediaDevices.getDisplayMedia({video:true})}catch(e){return}
+  call.screen=s;
+  const vt=s.getVideoTracks()[0];vt.onended=stopShare;
+  showScreen(me,s);$("cx").classList.add("on");
+  Object.entries(call.pcs).forEach(([u,pc])=>{pc._ss=pc.addTrack(vt,s);reneg(u,pc)});
+}
+$("cx").onclick=share;
+$("stage").ondblclick=e=>{if(e.target.tagName=="VIDEO"&&e.target.requestFullscreen)e.target.requestFullscreen()};
+if(!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia))$("cx").hidden=true;
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -466,7 +548,7 @@ function card(u){
   $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cun").textContent="@"+u;
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);$("card").hidden=false;
 }
-$("msgs").onclick=e=>{const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
+$("msgs").onclick=e=>{if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
 $("hav").onclick=()=>{if(cur&&!cur.group)card(cur.name)};
 $("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
