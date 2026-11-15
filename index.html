@@ -153,18 +153,28 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 .d-owner{box-shadow:0 0 0 3px #ffd34d,0 0 14px 4px rgba(255,211,77,.7);animation:own 2.2s ease-in-out infinite alternate}
 @keyframes own{to{box-shadow:0 0 0 3px #b388ff,0 0 18px 6px rgba(179,136,255,.8)}}
 .d-owner::before{content:"👑";position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-12deg);font-size:18px;line-height:1;z-index:1;pointer-events:none}
+.d-emerald{box-shadow:0 0 0 3px #2ee59d,0 0 14px 4px rgba(46,229,157,.7);animation:emer 1.8s ease-in-out infinite alternate}
+@keyframes emer{to{box-shadow:0 0 0 3px #12b886,0 0 22px 7px rgba(46,229,157,.9)}}
+.d-inferno{isolation:isolate}
+.d-inferno::before{content:"";position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(#ff3d00,#ffb300,#fff176,#ffb300,#ff3d00);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4px));animation:spin 1.6s linear infinite}
+.fx-glow{background:radial-gradient(circle at 50% 130%,var(--c2),var(--c1) 70%);animation:glow 3s ease-in-out infinite alternate}
+@keyframes glow{to{background-size:170% 170%;background-position:50% 100%}}
+.fx-stars{background:linear-gradient(180deg,var(--c1),var(--c2))}
+.fx-stars::before{content:"";position:absolute;inset:0;background-image:radial-gradient(1.5px 1.5px at 15px 20px,#fff,transparent),radial-gradient(1px 1px at 60px 70px,#fff,transparent),radial-gradient(2px 2px at 110px 30px,#fff,transparent),radial-gradient(1px 1px at 150px 90px,#fff,transparent);background-size:170px 110px;animation:drift 20s linear infinite}
+@keyframes drift{to{background-position:-170px 0}}
+.dp small{display:block;text-align:center}
 .d-sparkle::before{content:"✨";top:-8px;right:-8px;font-size:16px}
 .inc{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--hover);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);width:max-content;max-width:94%}
 .inc[hidden]{display:none}
 .authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
 @media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
-@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner,.d-emerald,.fx-glow,.fx-stars::before,.d-inferno::before{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <aside class="side">
-    <div class="brand">Talker <span><button id="staffBtn" title="Staff tools" aria-label="Staff tools" hidden>🛡</button><button id="findBtn" title="Find people" aria-label="Find people">🔎</button><button id="newG" title="New group chat" aria-label="New group chat">＋</button></span></div>
+    <div class="brand">Talker <span><button id="shopBtn" title="Points shop" aria-label="Points shop">⭐ 0</button><button id="staffBtn" title="Staff tools" aria-label="Staff tools" hidden>🛡</button><button id="findBtn" title="Find people" aria-label="Find people">🔎</button><button id="newG" title="New group chat" aria-label="New group chat">＋</button></span></div>
     <input id="q" placeholder="Search chats" aria-label="Search chats">
     <div class="list" id="list"></div>
     <div class="me">
@@ -219,6 +229,13 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
     <b id="rn"></b>
     <button class="callbtn" id="accept">Join</button>
     <button id="decline">Decline</button>
+  </div>
+  <div class="call" id="shop" hidden>
+    <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(520px,94%);padding:16px 0">
+      <div class="brand" style="padding:0">Points shop <button id="shopclose" aria-label="Close">✕</button></div>
+      <div><b id="shopbal"></b><br><small>Earn 1 point for every minute you spend on a call with someone else (up to 300 a day). Unlocked items are yours to keep.</small></div>
+      <div id="shoplist" style="flex:1;overflow:auto"></div>
+    </div>
   </div>
   <div class="call" id="staff" hidden>
     <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(560px,94%);padding:16px 0">
@@ -308,9 +325,9 @@ if(BLOCK_FRAMING&&window.top!==window.self){document.documentElement.innerHTML="
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
-const pics={},decs={},disp={},bios={},DECS=["none","gold","neon","rose","aurora","rainbow","ice","crown","sparkle","owner"];
+const pics={},decs={},disp={},bios={},DECS=["none","gold","rose","neon","ice","crown","sparkle","aurora","emerald","rainbow","inferno","owner"];
 const dn=n=>disp[n]||n;
-const fxs={},FX=["none","solid","gradient","flow","sparkle","snow"],HEX=/^#[0-9a-f]{6}$/i;
+const fxs={},FX=["none","solid","gradient","flow","sparkle","snow","glow","stars"],HEX=/^#[0-9a-f]{6}$/i;
 function bn(f,cls=""){f=f||{};const e=FX.includes(f.e)?f.e:"none",a=HEX.test(f.c1)?f.c1:"#0f766e",b=HEX.test(f.c2)?f.c2:"#7c5cff";return '<div class="ban fx-'+e+' '+cls+'" style="--c1:'+a+';--c2:'+b+'"></div>'}
 const decCls=d=>d&&d!="none"&&DECS.includes(d)?" d-"+d:"";
 const av=(n,cls="",d)=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return '<div class="av '+cls+decCls(d===undefined?decs[n]:d)+'" style="background:'+col(n)+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(n[0]))+'</div>'};
@@ -503,6 +520,7 @@ async function begin(cid,isNew){
   $("tiles").innerHTML="";addTile(me);
   $("ct").textContent="Waiting for others…";
   $("callUI").hidden=false;watch(stream,me);
+  call.iv.push(setInterval(beat,60000));
   call.iv.push(setInterval(()=>{
     const n=Object.values(call.pcs).filter(p=>p.connectionState=="connected").length;
     if(!n){call.t0=0;$("ct").textContent=Object.keys(call.pcs).length?"Connecting…":"Waiting for others…";return}
@@ -526,12 +544,13 @@ function leave(){
 async function enter(u){
   me=u.id;$("staffBtn").hidden=true;myRank=0;
   const ss=(await sb.auth.getSession()).data.session;if(ss)sb.realtime.setAuth(ss.access_token);
-  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable,role,banned_at,ban_reason,timeout_until").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable,role,banned_at,ban_reason,timeout_until,points").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
   uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;
   if(p.banned_at){await sb.auth.signOut();return $("ae").textContent="You are banned from Talker."+(p.ban_reason?" Reason: "+p.ban_reason:"")}
   myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;
-  tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
+  tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;
+  pts=p.points||0;paintPts();loadShop();pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
   $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
@@ -731,7 +750,7 @@ $("emo").innerHTML=EM.map(e=>"<button>"+e+"</button>").join("");
 $("emj").onclick=e=>{e.stopPropagation();$("menu").hidden=true;$("emo").hidden=!$("emo").hidden};
 $("emo").onclick=e=>{e.stopPropagation();const b=e.target.closest("button");if(b){$("in").value+=b.textContent;$("in").focus()}};
 document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true;$("cmds").hidden=true});
-addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff"].forEach(i=>$(i).hidden=true)});
+addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff","shop"].forEach(i=>$(i).hidden=true)});
 addEventListener("click",()=>{try{ac=ac||new AudioContext();ac.resume()}catch(e){}if(window.Notification&&Notification.permission=="default")Notification.requestPermission()},{once:true});
 $("pw").onkeydown=e=>{if(e.key=="Enter")$("login").click()};
 $("helpBtn").onclick=()=>$("help").hidden=false;
@@ -939,6 +958,7 @@ setInterval(chkTimeout,15000);
 async function myStatus(r){
   if(r.banned_at){await sb.auth.signOut();alert("You have been banned from Talker."+(r.ban_reason?" Reason: "+r.ban_reason:""));location.reload();return}
   tmo=r.timeout_until?new Date(r.timeout_until).getTime():0;
+  if(typeof r.points=="number"){pts=r.points;paintPts();if(!$("shop").hidden)drawShop()}
   const rk=r.is_owner?3:r.role=="admin"?2:r.role=="mod"?1:0;
   if(rk!=myRank){myRank=rk;$("staffBtn").hidden=rk<1}
   if(tmo>Date.now()&&call)leave();
@@ -982,16 +1002,47 @@ $("sres").onclick=async e=>{
 $("staffBtn").onclick=()=>{if(myRank<1)return;$("srole").textContent="Your role: "+ROLE[myRank];$("sq").value="";$("staff").hidden=false;staffList()};
 $("sclose").onclick=()=>$("staff").hidden=true;
 $("sq").oninput=()=>{clearTimeout(sqt);sqt=setTimeout(staffList,300)};
+let pts=0,SHOP=[],owned=new Set();
+const locked=id=>SHOP.some(i=>i.id==id)&&!owned.has(id);
+const paintPts=()=>{$("shopBtn").textContent="⭐ "+pts};
+async function loadShop(){
+  const [a,b]=await Promise.all([sb.from("shop_items").select("*").order("cost"),sb.from("unlocks").select("item_id")]);
+  SHOP=a.data||[];owned=new Set((b.data||[]).map(x=>x.item_id));
+}
+function beat(){
+  if(!call)return;
+  const n=Object.values(call.pcs).filter(p=>p.connectionState=="connected").length;
+  if(n)sb.rpc("call_heartbeat",{p_cid:call.cid}).then(r=>{if(r.data>0){pts+=r.data;paintPts()}});
+}
+function drawShop(){
+  $("shopbal").textContent="You have "+pts+" points";
+  $("shoplist").innerHTML=SHOP.map(i=>{
+    const dec=i.kind=="decoration",key=i.id.slice(dec?4:3),own=owned.has(i.id);
+    const prev=dec?av(uname,"",key):bn({e:key,c1:"#0f766e",c2:"#7c5cff"},"mini");
+    const act=own?"<button disabled>Owned</button>":pts>=i.cost?'<button class="fm" data-b="'+i.id+'">Buy '+i.cost+"</button>":"<button disabled>"+i.cost+" (need "+(i.cost-pts)+" more)</button>";
+    return '<div class="row" style="cursor:default">'+prev+'<div class="ri"><b>'+esc(i.name)+"</b><small>"+(dec?"Avatar decoration":"Profile background")+"</small></div>"+act+"</div>";
+  }).join("")||'<div class="empty">The shop is empty.</div>';
+}
+$("shopBtn").onclick=()=>{$("shop").hidden=false;drawShop()};
+$("shopclose").onclick=()=>$("shop").hidden=true;
+$("shoplist").onclick=async e=>{
+  const b=e.target.closest("[data-b]");if(!b)return;
+  const i=SHOP.find(x=>x.id==b.dataset.b);
+  if(!i||!confirm("Buy "+i.name+" for "+i.cost+" points?"))return;
+  const r=await sb.rpc("buy_item",{p_item:i.id});
+  if(r.error)return alert(r.error.message);
+  owned.add(i.id);pts=r.data;paintPts();drawShop();
+};
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
-  $("fxpick").innerHTML=FX.map(e=>'<button class="fp'+(e==pfx.e?" sel":"")+'" data-e="'+e+'" aria-label="'+e+'">'+bn({e,c1:pfx.c1,c2:pfx.c2},"mini")+'<small>'+e+'</small></button>').join("");
+  $("fxpick").innerHTML=FX.map(e=>'<button class="fp'+(e==pfx.e?" sel":"")+'" data-e="'+e+'" aria-label="'+e+'">'+bn({e,c1:pfx.c1,c2:pfx.c2},"mini")+'<small>'+e+(locked("fx:"+e)?" 🔒":"")+'</small></button>').join("");
 }
-$("fxpick").onclick=e=>{const b=e.target.closest(".fp");if(!b)return;pfx.e=b.dataset.e;drawFx()};
+$("fxpick").onclick=e=>{const b=e.target.closest(".fp");if(!b)return;if(locked("fx:"+b.dataset.e))return alert("Unlock this in the ⭐ shop first.");pfx.e=b.dataset.e;drawFx()};
 $("pc1").oninput=()=>{pfx.c1=$("pc1").value;drawFx()};
 $("pc2").oninput=()=>{pfx.c2=$("pc2").value;drawFx()};
-function drawPick(){$("dpick").innerHTML=DECS.filter(d=>d!="owner"||isOwner).map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+'</button>').join("")}
-$("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
+function drawPick(){$("dpick").innerHTML=DECS.filter(d=>d!="owner"||isOwner).map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+(locked("dec:"+d)?'<small>🔒</small>':"")+'</button>').join("")}
+$("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;if(locked("dec:"+b.dataset.d))return alert("Unlock this in the ⭐ shop first.");pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
 $("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("thm").value=TH.mode;$("pdisc").checked=disc;$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
 function card(u){
   $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cun").textContent="@"+u;
