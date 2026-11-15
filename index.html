@@ -136,12 +136,15 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 @keyframes spin{to{transform:rotate(360deg)}}
 .d-crown::before,.d-sparkle::before{position:absolute;pointer-events:none;line-height:1;z-index:1}
 .d-crown::before{content:"👑";top:-13px;left:50%;transform:translateX(-50%) rotate(-12deg);font-size:18px}
+.d-owner{box-shadow:0 0 0 3px #ffd34d,0 0 14px 4px rgba(255,211,77,.7);animation:own 2.2s ease-in-out infinite alternate}
+@keyframes own{to{box-shadow:0 0 0 3px #b388ff,0 0 18px 6px rgba(179,136,255,.8)}}
+.d-owner::before{content:"👑";position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(-12deg);font-size:18px;line-height:1;z-index:1;pointer-events:none}
 .d-sparkle::before{content:"✨";top:-8px;right:-8px;font-size:16px}
 .inc{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;background:var(--panel);border:1px solid var(--hover);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 6px 24px rgba(0,0,0,.25);width:max-content;max-width:94%}
 .inc[hidden]{display:none}
 .authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
 @media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
-@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
 </style>
 </head>
 <body>
@@ -268,7 +271,7 @@ if(BLOCK_FRAMING&&window.top!==window.self){document.documentElement.innerHTML="
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
-const pics={},decs={},disp={},bios={},DECS=["none","gold","neon","rose","aurora","rainbow","ice","crown","sparkle"];
+const pics={},decs={},disp={},bios={},DECS=["none","gold","neon","rose","aurora","rainbow","ice","crown","sparkle","owner"];
 const dn=n=>disp[n]||n;
 const fxs={},FX=["none","solid","gradient","flow","sparkle","snow"],HEX=/^#[0-9a-f]{6}$/i;
 function bn(f,cls=""){f=f||{};const e=FX.includes(f.e)?f.e:"none",a=HEX.test(f.c1)?f.c1:"#0f766e",b=HEX.test(f.c2)?f.c2:"#7c5cff";return '<div class="ban fx-'+e+' '+cls+'" style="--c1:'+a+';--c2:'+b+'"></div>'}
@@ -276,7 +279,7 @@ const decCls=d=>d&&d!="none"&&DECS.includes(d)?" d-"+d:"";
 const av=(n,cls="",d)=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return '<div class="av '+cls+decCls(d===undefined?decs[n]:d)+'" style="background:'+col(n)+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(n[0]))+'</div>'};
 const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"};
+let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false;
 const fmt=t=>new Date(t).toTimeString().slice(0,5);
 const mb=m=>esc(m[1]||"").replace(/https?:\/\/[^\s<]+/g,u=>'<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>')+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id];
@@ -480,9 +483,9 @@ function leave(){
 async function enter(u){
   me=u.id;
   const ss=(await sb.auth.getSession()).data.session;if(ss)sb.realtime.setAuth(ss.access_token);
-  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
-  uname=p.username;names[me]=uname;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
+  uname=p.username;names[me]=uname;isOwner=!!p.is_owner;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
   $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
@@ -727,7 +730,7 @@ function drawFx(){
 $("fxpick").onclick=e=>{const b=e.target.closest(".fp");if(!b)return;pfx.e=b.dataset.e;drawFx()};
 $("pc1").oninput=()=>{pfx.c1=$("pc1").value;drawFx()};
 $("pc2").oninput=()=>{pfx.c2=$("pc2").value;drawFx()};
-function drawPick(){$("dpick").innerHTML=DECS.map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+'</button>').join("")}
+function drawPick(){$("dpick").innerHTML=DECS.filter(d=>d!="owner"||isOwner).map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+'</button>').join("")}
 $("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
 $("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
 function card(u){
