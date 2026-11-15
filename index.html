@@ -1004,7 +1004,7 @@ $("sclose").onclick=()=>$("staff").hidden=true;
 $("sq").oninput=()=>{clearTimeout(sqt);sqt=setTimeout(staffList,300)};
 let pts=0,SHOP=[],owned=new Set();
 const locked=id=>SHOP.some(i=>i.id==id)&&!owned.has(id);
-const paintPts=()=>{$("shopBtn").textContent="⭐ "+pts};
+const paintPts=()=>{$("shopBtn").textContent="⭐ "+(isOwner?"∞":pts)};
 async function loadShop(){
   const [a,b]=await Promise.all([sb.from("shop_items").select("*").order("cost"),sb.from("unlocks").select("item_id")]);
   SHOP=a.data||[];owned=new Set((b.data||[]).map(x=>x.item_id));
@@ -1015,11 +1015,11 @@ function beat(){
   if(n)sb.rpc("call_heartbeat",{p_cid:call.cid}).then(r=>{if(r.data>0){pts+=r.data;paintPts()}});
 }
 function drawShop(){
-  $("shopbal").textContent="You have "+pts+" points";
+  $("shopbal").textContent=isOwner?"You have infinite points (owner)":"You have "+pts+" points";
   $("shoplist").innerHTML=SHOP.map(i=>{
     const dec=i.kind=="decoration",key=i.id.slice(dec?4:3),own=owned.has(i.id);
     const prev=dec?av(uname,"",key):bn({e:key,c1:"#0f766e",c2:"#7c5cff"},"mini");
-    const act=own?"<button disabled>Owned</button>":pts>=i.cost?'<button class="fm" data-b="'+i.id+'">Buy '+i.cost+"</button>":"<button disabled>"+i.cost+" (need "+(i.cost-pts)+" more)</button>";
+    const act=own?"<button disabled>Owned</button>":(isOwner||pts>=i.cost)?'<button class="fm" data-b="'+i.id+'">'+(isOwner?"Unlock":"Buy "+i.cost)+"</button>":"<button disabled>"+i.cost+" (need "+(i.cost-pts)+" more)</button>";
     return '<div class="row" style="cursor:default">'+prev+'<div class="ri"><b>'+esc(i.name)+"</b><small>"+(dec?"Avatar decoration":"Profile background")+"</small></div>"+act+"</div>";
   }).join("")||'<div class="empty">The shop is empty.</div>';
 }
@@ -1028,7 +1028,7 @@ $("shopclose").onclick=()=>$("shop").hidden=true;
 $("shoplist").onclick=async e=>{
   const b=e.target.closest("[data-b]");if(!b)return;
   const i=SHOP.find(x=>x.id==b.dataset.b);
-  if(!i||!confirm("Buy "+i.name+" for "+i.cost+" points?"))return;
+  if(!i||!confirm(isOwner?"Unlock "+i.name+" for free?":"Buy "+i.name+" for "+i.cost+" points?"))return;
   const r=await sb.rpc("buy_item",{p_item:i.id});
   if(r.error)return alert(r.error.message);
   owned.add(i.id);pts=r.data;paintPts();drawShop();
