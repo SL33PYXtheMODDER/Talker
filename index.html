@@ -231,7 +231,7 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
       <div class="brand" style="padding:0">Edit profile</div>
       <div id="pban"></div>
       <div id="pav" style="align-self:center"></div>
-      <label class="callbtn" style="text-align:center;padding:9px;border-radius:10px;cursor:pointer">Choose picture<input id="file" type="file" accept="image/*" hidden></label>
+      <label class="callbtn" style="text-align:center;padding:9px;border-radius:10px;cursor:pointer">Choose picture or GIF<input id="file" type="file" accept="image/*" hidden></label>
       <small style="text-align:center">Avatar decoration</small>
       <div id="dpick" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center"></div>
       <small style="text-align:center">Profile effect</small>
@@ -290,7 +290,7 @@ const decCls=d=>d&&d!="none"&&DECS.includes(d)?" d-"+d:"";
 const av=(n,cls="",d)=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return '<div class="av '+cls+decCls(d===undefined?decs[n]:d)+'" style="background:'+col(n)+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(n[0]))+'</div>'};
 const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true;
+let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true,pext="jpg";
 const fmt=t=>new Date(t).toTimeString().slice(0,5);
 const mb=m=>esc(m[1]||"").replace(/https?:\/\/[^\s<]+/g,u=>'<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>')+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id];
@@ -770,6 +770,18 @@ $("fres").onclick=e=>{
   const m=e.target.closest("[data-dm]");if(m)return dm(m.dataset.dm);
   const r=e.target.closest(".row");if(r)card(r.dataset.u);
 };
+async function checkGif(f){
+  if(f.size>2097152)throw new Error("GIFs must be under 2 MB.");
+  const h=new Uint8Array(await f.slice(0,4).arrayBuffer());
+  if(String.fromCharCode(...h)!="GIF8")throw new Error("That file is not a valid GIF.");
+  await new Promise((ok,no)=>{
+    const i=new Image();
+    i.onload=()=>i.naturalWidth>800||i.naturalHeight>800?no(new Error("GIFs can be at most 800 by 800 pixels.")):ok();
+    i.onerror=()=>no(new Error("Could not read that GIF."));
+    i.src=URL.createObjectURL(f);
+  });
+  return f;
+}
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -791,7 +803,7 @@ $("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
 $("file").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  try{pend=await shrink(f)}catch(x){return $("pe").textContent=x.message}
+  try{const g=f.type=="image/gif";pend=g?await checkGif(f):await shrink(f);pext=g?"gif":"jpg"}catch(x){return $("pe").textContent=x.message}
   $("pav").innerHTML='<div class="av'+decCls(pdec)+'" style="background:#555"><img alt="" src="'+URL.createObjectURL(pend)+'"></div>';
 };
 $("psave").onclick=async()=>{
@@ -800,10 +812,11 @@ $("psave").onclick=async()=>{
   const upd={username:un,discoverable:$("pdisc").checked,display_name:$("pd").value.trim()||null,bio:$("pb").value.trim()||null,effect:pfx.e=="none"?null:pfx.e,color1:pfx.e=="none"?null:pfx.c1,color2:pfx.e=="none"?null:pfx.c2,decoration:pdec=="none"?null:pdec};
   try{
     if(pend){
-      const path=me+".jpg";
-      const r=await sb.storage.from("avatars").upload(path,pend,{upsert:true,contentType:"image/jpeg"});
+      const path=me+"."+pext;
+      const r=await sb.storage.from("avatars").upload(path,pend,{upsert:true,contentType:pext=="gif"?"image/gif":"image/jpeg"});
       if(r.error)throw r.error;
       upd.avatar_url=sb.storage.from("avatars").getPublicUrl(path).data.publicUrl+"?v="+Date.now();
+      sb.storage.from("avatars").remove([me+"."+(pext=="gif"?"jpg":"gif")]);
     }
     const r=await sb.from("profiles").update(upd).eq("id",me);
     if(r.error)throw r.error;
