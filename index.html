@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Talker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap">
 <style>
 :root{--bg:#f1f5f4;--side:#e3ebea;--panel:#d6e1df;--text:#142326;--mute:#53686b;--accent:#0f766e;--on:#fff;--hover:#cfdcda;--green:#1f9d55;--red:#d6454b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#142a2d;--side:#0f2124;--panel:#0a181a;--text:#e8f1ef;--mute:#8fa8aa;--accent:#ffcf4a;--on:#1a1a10;--hover:#1d3a3e;--green:#3ddc84;--red:#ff6b70;color-scheme:dark}}
@@ -169,6 +169,86 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 .authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
 @media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
 @media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner,.d-emerald,.fx-glow,.fx-stars::before,.d-inferno::before{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
+</style>
+<style id="skin">
+/* Dusk: plum night, tangerine accent. Same features, new skin. */
+:root{--bg:#e9e1f4;--side:#f5f0fb;--room:#fff;--panel:#ece4f6;--hover:#e1d6f0;--bub:#efe8f8;--text:#251c3d;--mute:#6a5f88;--accent:#d9480f;--on:#fff;--green:#1f9d55;--red:#d6334f;--scrim:rgba(233,225,244,.86)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15101f;--side:#1d1630;--room:#251d3b;--panel:#2e2447;--hover:#3a2e58;--bub:#352a52;--text:#f3eefc;--mute:#a99fc9;--accent:#ffa24c;--on:#2b1500;--green:#4ade80;--red:#ff6b81;--scrim:rgba(21,16,31,.84)}}
+:root[data-theme="dark"]{--bg:#15101f;--side:#1d1630;--room:#251d3b;--panel:#2e2447;--hover:#3a2e58;--bub:#352a52;--text:#f3eefc;--mute:#a99fc9;--accent:#ffa24c;--on:#2b1500;--green:#4ade80;--red:#ff6b81;--scrim:rgba(21,16,31,.84)}
+*{scrollbar-width:thin;scrollbar-color:var(--hover) transparent}
+body{font:15px/1.5 "Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button{border-radius:999px;padding:8px 14px;font-weight:600}
+input,textarea,select{border-radius:14px;padding:12px 14px}
+.app{padding:10px;gap:10px}
+.side{width:318px;background:var(--side);border-radius:26px;overflow:hidden}
+.main{background:var(--room);border-radius:26px;overflow:hidden}
+.brand{padding:18px 18px 12px;font:700 27px/1 "Bricolage Grotesque",system-ui,sans-serif;letter-spacing:-.02em}
+.brand span{display:flex;gap:6px;align-items:center}
+.brand button{width:36px;height:36px;padding:0;background:var(--panel);font-size:16px;line-height:1}
+.brand button:hover{background:var(--hover)}
+.brand button#shopBtn{width:auto;padding:0 12px;font-size:14px}
+.side>input{margin:0 14px 10px;border-radius:999px;padding:11px 18px}
+.list{padding:0 10px}
+.row{border-radius:18px;padding:10px 12px;gap:12px}
+.row.act{background:var(--bub);box-shadow:inset 3px 0 0 var(--accent)}
+.ri b,.mi b,.hd b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:500}
+.bd{border-radius:999px;padding:1px 8px;font-weight:700}
+.tag{border-radius:999px;padding:1px 8px}
+.me{margin:8px;border-radius:20px;padding:8px 10px}
+.me button{width:34px;height:34px;padding:0;background:transparent;font-size:15px}
+.me button:hover{background:var(--hover)}
+.me button.off{background:rgba(214,69,75,.18)}
+header{padding:14px 20px;gap:12px;border-bottom:0}
+header .av{--side:var(--room);width:44px;height:44px}
+.hi b{font-size:20px;letter-spacing:-.01em}
+.callbtn{padding:10px 18px}
+#more{width:40px;height:40px;padding:0;background:var(--panel);font-size:18px;color:var(--text)}
+#more:hover{background:var(--hover)}
+.msgs{padding:4px 20px 12px}
+.m{align-items:flex-end;gap:10px;margin-top:14px}
+.m.c{margin-top:3px}
+.m .av{width:36px;height:36px;font-size:14px}
+.gap{width:36px}
+.m>div:not(.gap):not(.t){display:flex;flex-direction:column;align-items:flex-start;min-width:0;max-width:min(620px,86%)}
+.m.c>.t{max-width:min(620px,86%)}
+.hd{margin:0 8px 3px;font-size:13px}
+.t{background:var(--bub);padding:9px 15px;border-radius:7px 20px 20px 20px;max-width:100%;width:fit-content}
+.m.c .t{border-radius:7px 20px 20px 7px}
+.t .pic{border-radius:14px;margin-top:6px}
+.m.mine{flex-direction:row-reverse}
+.m.mine>div:not(.gap):not(.t){align-items:flex-end}
+.m.mine .hd{text-align:right}
+.m.mine .t{background:var(--accent);color:var(--on);border-radius:20px 7px 20px 20px}
+.m.mine.c .t{border-radius:20px 7px 7px 20px}
+.m.mine .t a{color:inherit;text-decoration:underline}
+.m.mine .t small{color:inherit;opacity:.75}
+.m.mine .t code{background:rgba(0,0,0,.18)}
+.m.mine .spoil{background:var(--on)}
+.m.mine .spoil.on{background:rgba(0,0,0,.18);color:inherit}
+.m.mine .acts button{color:inherit}
+.dsep{margin:20px 0 6px;font-weight:600}
+.typing{padding:0 24px}
+.compose{margin:0 14px 14px;padding:6px;gap:4px;border-radius:999px;background:var(--panel);align-items:center}
+.compose input{background:transparent;padding:10px 12px;border-radius:999px}
+.compose button,.compose #att{background:transparent;color:var(--text);width:40px;height:40px;padding:0;font-size:18px}
+.compose button:hover,.compose #att:hover{background:var(--hover);filter:none}
+.compose #send{width:auto;padding:0 20px;background:var(--accent);color:var(--on);font-size:15px;font-weight:700}
+.compose #send:hover{background:var(--accent);filter:brightness(1.08)}
+.menu{top:80px;right:18px;border-radius:18px;padding:8px;background:var(--side);box-shadow:0 18px 44px rgba(0,0,0,.35)}
+.menu button{border-radius:12px}
+.menu.cmds,.menu.emo{bottom:76px;left:14px}
+.call{background:var(--scrim);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+#callUI{background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}
+.authbox{background:var(--side);border:1px solid var(--hover);border-radius:28px;padding:22px!important;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.authbox.pcard{padding:0!important}
+.call>.authbox[style*="min-height:0"]{margin:16px auto!important}
+#cban .ban{height:120px}
+.tile{border-radius:26px}
+.ctl button{width:58px;height:58px}
+.ch b{font-size:24px}
+.inc{border-radius:999px;padding:8px 10px 8px 18px;background:var(--side);box-shadow:0 18px 44px rgba(0,0,0,.4)}
+.dp,.fp{border-radius:16px}
+@media (max-width:700px){.app{padding:0;gap:0}.side{width:100%}.side,.main{border-radius:0}}
 </style>
 </head>
 <body>
@@ -353,8 +433,8 @@ function renderMsgs(){
   cur.msgs.filter(m=>!blocked.has(m[6])&&(!mq||(m[1]||"").toLowerCase().includes(mq))).forEach(m=>{
     if(!p||dayOf(m[7])!=dayOf(p[7])){h+='<div class="dsep">'+dayLabel(m[7])+'</div>';p=null}
     h+=p&&p[0]==m[0]
-      ?'<div class="m c"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
-      :'<div class="m" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
+      ?'<div class="m c'+(m[0]==uname?" mine":"")+'"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
+      :'<div class="m'+(m[0]==uname?" mine":"")+'" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
     p=m;
   });
   if(mq)h='<div class="dsep">Results for “'+esc(mq)+'” <button id="clrq">Clear</button></div>'+h;
