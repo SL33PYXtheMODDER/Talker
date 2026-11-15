@@ -84,6 +84,10 @@ textarea{resize:none;height:84px}
 .menu[hidden]{display:none}
 .menu button{text-align:left}
 .menu button[hidden]{display:none}
+.menu.cmds{top:auto;right:auto;left:16px;bottom:70px;width:min(400px,92%);max-height:260px;overflow:auto;min-width:0}
+.cmds button{display:flex;gap:10px;align-items:baseline}
+.cmds button.sel{background:var(--hover)}
+.cmds b{flex:none}
 .menu.emo{top:auto;right:auto;left:16px;bottom:70px;flex-direction:row;flex-wrap:wrap;width:min(300px,90%);min-width:0}
 .menu.emo button{padding:4px 6px;font-size:20px}
 .acts{margin-left:6px;opacity:0;transition:opacity .15s}
@@ -187,6 +191,7 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
       <button id="mLeave">Leave chat</button>
     </div>
     <div class="menu emo" id="emo" hidden></div>
+    <div class="menu cmds" id="cmds" hidden></div>
     <div class="msgs" id="msgs"></div>
     <div class="typing" id="typ"></div>
     <div class="compose">
@@ -337,7 +342,7 @@ function open(id){
   paintHead();
   $("hn").textContent=cur.group?cur.name:dn(cur.name);
     $("call").textContent=cur.group?"📞 Start group call":"📞 Call";
-  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (try /roll d20)";$("in").value=drafts[cur.id]||"";
+  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (type / for commands)";$("in").value=drafts[cur.id]||"";$("cmds").hidden=true;
   showTyping();
   renderMsgs();renderList();
 }
@@ -380,7 +385,7 @@ function listen(){presence();
 async function send(){
   let t=$("in").value.trim();if(!t||!cur)return;
   t=cmd(t);if(!t)return;
-  $("in").value="";delete drafts[cur.id];
+  $("in").value="";delete drafts[cur.id];$("cmds").hidden=true;
   const {data,error}=await sb.from("messages").insert({conversation_id:cur.id,body:t}).select().single();
   if(error)return alert(error.message);
   addMsg(data);
@@ -543,6 +548,10 @@ $("list").onclick=e=>{const r=e.target.closest(".row");if(r)open(r.dataset.id)};
 $("q").oninput=renderList;
 $("send").onclick=send;
 $("in").onkeydown=e=>{
+  if(!$("cmds").hidden){
+    if(e.key=="ArrowDown"||e.key=="ArrowUp"){e.preventDefault();cs=(cs+(e.key=="ArrowDown"?1:cl.length-1))%cl.length;updCmds();return}
+    if(e.key=="Tab"||(e.key=="Enter"&&$("in").value.toLowerCase()!=cl[cs][0])){e.preventDefault();pickCmd(cs);return}
+  }
   if(e.key=="Enter")send();
   if(e.key=="ArrowUp"&&!$("in").value&&cur){const mine=[...cur.msgs].reverse().find(m=>m[0]==uname&&m[3]&&m[1]);if(mine){e.preventDefault();editMsg(mine[3])}}
 };
@@ -708,8 +717,8 @@ $("mLeave").onclick=async()=>{
 $("emo").innerHTML=EM.map(e=>"<button>"+e+"</button>").join("");
 $("emj").onclick=e=>{e.stopPropagation();$("menu").hidden=true;$("emo").hidden=!$("emo").hidden};
 $("emo").onclick=e=>{e.stopPropagation();const b=e.target.closest("button");if(b){$("in").value+=b.textContent;$("in").focus()}};
-document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true});
-addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder"].forEach(i=>$(i).hidden=true)});
+document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true;$("cmds").hidden=true});
+addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds"].forEach(i=>$(i).hidden=true)});
 addEventListener("click",()=>{try{ac=ac||new AudioContext();ac.resume()}catch(e){}if(window.Notification&&Notification.permission=="default")Notification.requestPermission()},{once:true});
 $("pw").onkeydown=e=>{if(e.key=="Enter")$("login").click()};
 $("helpBtn").onclick=()=>$("help").hidden=false;
@@ -876,6 +885,34 @@ $("thm").onchange=()=>{TH.mode=$("thm").value;applyTheme()};
 $("mSearch").onclick=()=>{const q=prompt("Search this chat");if(q===null)return;mq=q.trim().toLowerCase();renderMsgs()};
 $("mMute").onclick=()=>{muted2.has(cur.id)?muted2.delete(cur.id):muted2.add(cur.id);saveMuted();renderList()};
 addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()=="k"&&me){e.preventDefault();$("findBtn").click()}});
+const CMDS=[
+  ["/roll","[NdM]","Roll dice (default d20)"],
+  ["/flip","","Flip a coin"],
+  ["/8ball","[question]","Ask the magic 8-ball"],
+  ["/choose","a | b | c","Pick one option at random"],
+  ["/me","action","Send an action, like “hexxy waves”"],
+  ["/shrug","[text]","Add ¯\\_(ツ)_/¯"],
+  ["/tableflip","[text]","Add (╯°□°)╯︵ ┻━┻"],
+  ["/unflip","[text]","Add ┬─┬ ノ( ゜-゜ノ)"],
+  ["/party","","Send a party message with confetti"]
+];
+let cs=0,cl=[];
+function updCmds(){
+  const v=$("in").value.toLowerCase();
+  if(v[0]!="/"||/\s/.test(v)){$("cmds").hidden=true;return}
+  cl=CMDS.filter(c=>c[0].startsWith(v));
+  if(!cl.length){$("cmds").hidden=true;return}
+  cs=Math.min(cs,cl.length-1);
+  $("cmds").innerHTML=cl.map((c,i)=>'<button data-i="'+i+'" class="'+(i==cs?"sel":"")+'"><b>'+c[0]+"</b><small>"+esc(c[1])+(c[1]?" — ":"")+esc(c[2])+"</small></button>").join("");
+  $("cmds").hidden=false;
+}
+function pickCmd(i){
+  const c=cl[i];if(!c)return;
+  $("in").value=c[0]+(c[1]?" ":"");$("cmds").hidden=true;$("in").focus();
+}
+$("in").addEventListener("input",()=>{cs=0;updCmds()});
+$("cmds").onmousedown=e=>e.preventDefault();
+$("cmds").onclick=e=>{const b=e.target.closest("button");if(b)pickCmd(+b.dataset.i)};
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
