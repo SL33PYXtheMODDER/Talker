@@ -163,7 +163,7 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 <body>
 <div class="app" id="app">
   <aside class="side">
-    <div class="brand">Talker <span><button id="findBtn" title="Find people" aria-label="Find people">🔎</button><button id="newG" title="New group chat" aria-label="New group chat">＋</button></span></div>
+    <div class="brand">Talker <span><button id="staffBtn" title="Staff tools" aria-label="Staff tools" hidden>🛡</button><button id="findBtn" title="Find people" aria-label="Find people">🔎</button><button id="newG" title="New group chat" aria-label="New group chat">＋</button></span></div>
     <input id="q" placeholder="Search chats" aria-label="Search chats">
     <div class="list" id="list"></div>
     <div class="me">
@@ -218,6 +218,14 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
     <b id="rn"></b>
     <button class="callbtn" id="accept">Join</button>
     <button id="decline">Decline</button>
+  </div>
+  <div class="call" id="staff" hidden>
+    <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(560px,94%);padding:16px 0">
+      <div class="brand" style="padding:0">Staff tools <button id="sclose" aria-label="Close">✕</button></div>
+      <small id="srole"></small>
+      <input id="sq" placeholder="Search users" aria-label="Search users" maxlength="32" autocomplete="off">
+      <div id="sres" style="flex:1;overflow:auto"></div>
+    </div>
   </div>
   <div class="call" id="finder" hidden>
     <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(520px,94%);padding:16px 0">
@@ -342,7 +350,7 @@ function open(id){
   paintHead();
   $("hn").textContent=cur.group?cur.name:dn(cur.name);
     $("call").textContent=cur.group?"📞 Start group call":"📞 Call";
-  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (type / for commands)";$("in").value=drafts[cur.id]||"";$("cmds").hidden=true;
+  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (type / for commands)";$("in").value=drafts[cur.id]||"";$("cmds").hidden=true;chkTimeout();
   showTyping();
   renderMsgs();renderList();
 }
@@ -380,6 +388,7 @@ function listen(){presence();
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"messages"},p=>updMsg(p.new))
     .on("postgres_changes",{event:"DELETE",schema:"public",table:"messages"},p=>rmMsg(p.old.id))
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"conversations"},reload)
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"profiles",filter:"id=eq."+me},p=>myStatus(p.new))
     .subscribe();
 }
 async function send(){
@@ -516,9 +525,12 @@ function leave(){
 async function enter(u){
   me=u.id;
   const ss=(await sb.auth.getSession()).data.session;if(ss)sb.realtime.setAuth(ss.access_token);
-  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable,role,banned_at,ban_reason,timeout_until").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
-  uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
+  uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;
+  if(p.banned_at){await sb.auth.signOut();return $("ae").textContent="You are banned from Talker."+(p.ban_reason?" Reason: "+p.ban_reason:"")}
+  myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;
+  tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
   $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
@@ -718,7 +730,7 @@ $("emo").innerHTML=EM.map(e=>"<button>"+e+"</button>").join("");
 $("emj").onclick=e=>{e.stopPropagation();$("menu").hidden=true;$("emo").hidden=!$("emo").hidden};
 $("emo").onclick=e=>{e.stopPropagation();const b=e.target.closest("button");if(b){$("in").value+=b.textContent;$("in").focus()}};
 document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true;$("cmds").hidden=true});
-addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds"].forEach(i=>$(i).hidden=true)});
+addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff"].forEach(i=>$(i).hidden=true)});
 addEventListener("click",()=>{try{ac=ac||new AudioContext();ac.resume()}catch(e){}if(window.Notification&&Notification.permission=="default")Notification.requestPermission()},{once:true});
 $("pw").onkeydown=e=>{if(e.key=="Enter")$("login").click()};
 $("helpBtn").onclick=()=>$("help").hidden=false;
@@ -913,6 +925,62 @@ function pickCmd(i){
 $("in").addEventListener("input",()=>{cs=0;updCmds()});
 $("cmds").onmousedown=e=>e.preventDefault();
 $("cmds").onclick=e=>{const b=e.target.closest("button");if(b)pickCmd(+b.dataset.i)};
+let myRank=0,tmo=0,sqt;
+const ROLE=["user","mod","admin","owner"];
+const rankOf=r=>r.is_owner?3:r.role=="admin"?2:r.role=="mod"?1:0;
+function chkTimeout(){
+  if(!cur)return;
+  const t=tmo>Date.now();
+  if(t){$("in").disabled=true;$("in").placeholder="You are timed out until "+new Date(tmo).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}
+  else if($("in").disabled){$("in").disabled=false;$("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (type / for commands)"}
+}
+setInterval(chkTimeout,15000);
+async function myStatus(r){
+  if(r.banned_at){await sb.auth.signOut();alert("You have been banned from Talker."+(r.ban_reason?" Reason: "+r.ban_reason:""));location.reload();return}
+  tmo=r.timeout_until?new Date(r.timeout_until).getTime():0;
+  const rk=r.is_owner?3:r.role=="admin"?2:r.role=="mod"?1:0;
+  if(rk!=myRank){myRank=rk;$("staffBtn").hidden=rk<1}
+  if(tmo>Date.now()&&call)leave();
+  chkTimeout();
+}
+async function staffList(){
+  const r=await sb.rpc("staff_list_users",{p_q:$("sq").value.trim().slice(0,32)});
+  if(r.error)return $("sres").innerHTML='<div class="empty">'+esc(r.error.message)+"</div>";
+  r.data.forEach(u=>pics[u.username]=u.avatar_url);
+  $("sres").innerHTML=r.data.map(u=>{
+    const rk=rankOf(u),other=u.id!=me,tm=u.timeout_until&&new Date(u.timeout_until)>new Date();
+    const tags=(rk?'<span class="tag">'+ROLE[rk]+"</span> ":"")+(u.banned_at?'<span class="tag" style="color:var(--red)">banned</span> ':"")+(tm?'<span class="tag">timed out until '+esc(new Date(u.timeout_until).toLocaleString())+"</span>":"");
+    const btn=(a,t,l)=>'<button data-a="'+a+'" data-id="'+u.id+'" data-u="'+esc(u.username)+'" title="'+t+'" aria-label="'+t+'">'+l+"</button>";
+    return '<div class="row" style="cursor:default">'+av(u.username)+'<div class="ri"><b>'+esc(u.display_name||u.username)+"</b><small>@"+esc(u.username)+"</small>"+(tags?"<div>"+tags+"</div>":"")+"</div>"
+      +(other&&myRank>=1&&rk<myRank?btn("t","Time out",'⏱'):"")
+      +(other&&myRank>=2&&rk<myRank?(u.banned_at?btn("u","Unban","Unban"):btn("b","Ban","🚫")):"")
+      +(other&&myRank>=3&&rk<3?btn("r","Change role","⭐"):"")+"</div>";
+  }).join("")||'<div class="empty">No users found.</div>';
+}
+$("sres").onclick=async e=>{
+  const b=e.target.closest("button[data-a]");if(!b)return;
+  const {a,id,u}=b.dataset;let r;
+  if(a=="t"){
+    const m=prompt("Time out @"+u+" for how many minutes? (0 removes a timeout, max 40320)","10");if(m===null)return;
+    const n=parseInt(m,10);if(isNaN(n))return alert("Enter a number.");
+    const why=n>0?(prompt("Reason (optional)")||""):"";
+    r=await sb.rpc("staff_timeout",{p_user:id,p_minutes:n,p_reason:why});
+  }else if(a=="b"){
+    const why=prompt("Ban @"+u+"? Enter a reason (optional) or press Cancel.");if(why===null)return;
+    r=await sb.rpc("staff_ban",{p_user:id,p_reason:why});
+  }else if(a=="u"){
+    if(!confirm("Unban @"+u+"?"))return;
+    r=await sb.rpc("staff_unban",{p_user:id});
+  }else if(a=="r"){
+    const ro=prompt("New role for @"+u+": user, mod or admin","mod");if(ro===null)return;
+    r=await sb.rpc("staff_set_role",{p_user:id,p_role:ro.trim().toLowerCase()});
+  }
+  if(r&&r.error)return alert(r.error.message);
+  staffList();
+};
+$("staffBtn").onclick=()=>{$("srole").textContent="Your role: "+ROLE[myRank];$("sq").value="";$("staff").hidden=false;staffList()};
+$("sclose").onclick=()=>$("staff").hidden=true;
+$("sq").oninput=()=>{clearTimeout(sqt);sqt=setTimeout(staffList,300)};
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
