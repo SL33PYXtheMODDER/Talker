@@ -1,2 +1,2 @@
 # Talker
-Just discord but made simple.
+*Just discord but made simple.*
