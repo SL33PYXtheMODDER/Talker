@@ -92,6 +92,13 @@ textarea{resize:none;height:84px}
 .t a{color:var(--accent);word-break:break-all}
 .fm{background:var(--accent);color:var(--on);font-weight:600;padding:5px 10px;flex:none}
 input[type=checkbox]{width:auto;padding:0}
+.dsep{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:12px;margin:16px 0 4px}
+.dsep::before,.dsep::after{content:"";flex:1;height:1px;background:var(--hover)}
+.spoil{background:var(--mute);color:transparent;border-radius:4px;cursor:pointer;user-select:none}
+.spoil.on{background:var(--panel);color:inherit;user-select:auto}
+.t code{background:var(--panel);padding:1px 5px;border-radius:5px;font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+select{font:inherit;color:var(--text);background:var(--panel);border:0;border-radius:10px;padding:10px 12px}
+.sw{width:30px;height:30px;border-radius:50%;padding:0;border:2px solid var(--hover)}
 .pic{display:block;max-width:min(320px,100%);max-height:260px;border-radius:10px;margin-top:4px;cursor:zoom-in;background:var(--panel)}
 .pic:not([src]){width:200px;height:140px}
 .compose #att{background:var(--panel);color:var(--text)}
@@ -175,6 +182,8 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
     <div class="menu" id="menu" hidden>
       <button id="mAdd">Add people</button>
       <button id="mRen">Rename group</button>
+      <button id="mSearch">Search messages</button>
+      <button id="mMute">Mute chat</button>
       <button id="mLeave">Leave chat</button>
     </div>
     <div class="menu emo" id="emo" hidden></div>
@@ -243,6 +252,9 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
       <input id="pn" placeholder="Username" aria-label="Username" maxlength="20">
       <button class="callbtn" id="psave">Save</button>
       <button id="pclose">Cancel</button>
+      <small style="text-align:center">App theme (this device only)</small>
+      <select id="thm" aria-label="Theme"><option value="auto">Match my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+      <div id="accs" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
       <small style="text-align:center">Account security</small>
       <button id="cpw">Change password</button>
       <button id="lgall">Log out of all devices</button>
@@ -292,37 +304,40 @@ const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true,pext="jpg";
 const fmt=t=>new Date(t).toTimeString().slice(0,5);
-const mb=m=>esc(m[1]||"").replace(/https?:\/\/[^\s<]+/g,u=>'<a href="'+u+'" target="_blank" rel="noopener noreferrer">'+u+'</a>')+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
-const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id];
+const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
+const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at];
 function renderList(){
   const f=$("q").value.toLowerCase();
   $("list").innerHTML=D.filter(c=>(c.name+" "+dn(c.name)).toLowerCase().includes(f)).map(c=>{
     const l=[...c.msgs].reverse().find(m=>!blocked.has(m[6]));
     const prev=l?(l[0]==uname?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||"📷 Photo"):"No messages yet";
     return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name,c.group?"":(isOn(c)?"on":"off"))+
-      '<div class="ri"><b>'+esc(c.group?c.name:dn(c.name))+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
+      '<div class="ri"><b>'+esc(c.group?c.name:dn(c.name))+(muted2.has(c.id)?" 🔕":"")+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
       (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
   }).join("")||'<div class="empty">'+(D.length?"No chats match your search.":"No chats yet. Tap ＋ to start one.")+'</div>';
   const n=D.reduce((a,c)=>a+c.unread,0);document.title=(n?"("+n+") ":"")+"Talker";
 }
 function renderMsgs(){
   let h="",p=null;
-  cur.msgs.filter(m=>!blocked.has(m[6])).forEach(m=>{
+  cur.msgs.filter(m=>!blocked.has(m[6])&&(!mq||(m[1]||"").toLowerCase().includes(mq))).forEach(m=>{
+    if(!p||dayOf(m[7])!=dayOf(p[7])){h+='<div class="dsep">'+dayLabel(m[7])+'</div>';p=null}
     h+=p&&p[0]==m[0]
       ?'<div class="m c"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
       :'<div class="m" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
     p=m;
   });
+  if(mq)h='<div class="dsep">Results for “'+esc(mq)+'” <button id="clrq">Clear</button></div>'+h;
   $("msgs").innerHTML=h||'<div class="empty">No messages yet. Say hi to start the conversation.</div>';
   $("msgs").scrollTop=1e9;hydrate();
 }
 function open(id){
-  cur=D.find(c=>c.id==id);cur.unread=0;
+  if(cur)drafts[cur.id]=$("in").value;
+  cur=D.find(c=>c.id==id);cur.unread=0;mq="";
   $("app").classList.add("chat");$("call").hidden=false;$("in").disabled=false;
   paintHead();
   $("hn").textContent=cur.group?cur.name:dn(cur.name);
     $("call").textContent=cur.group?"📞 Start group call":"📞 Call";
-  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name));
+  $("in").placeholder="Message "+(cur.group?cur.name:dn(cur.name))+" (try /roll d20)";$("in").value=drafts[cur.id]||"";
   showTyping();
   renderMsgs();renderList();
 }
@@ -330,9 +345,10 @@ function addMsg(m){
   const c=D.find(x=>x.id==m.conversation_id);
   if(!c||c.msgs.some(x=>x[3]==m.id))return;
   c.msgs.push(tup(m));
+  if(c==cur&&!document.hidden&&(m.body||"").includes("🎉"))confetti();
   if(tt[c.id])delete tt[c.id][m.user_id];
   if(c==cur)renderMsgs();else if(m.user_id!=me&&!blocked.has(m.user_id))c.unread++;
-  if(m.user_id!=me&&!blocked.has(m.user_id)&&(c!=cur||document.hidden))ping(c,m);
+  if(m.user_id!=me&&!blocked.has(m.user_id)&&(c!=cur||document.hidden)&&!muted2.has(c.id))ping(c,m);
   renderList();
 }
 async function load(){
@@ -362,8 +378,9 @@ function listen(){presence();
     .subscribe();
 }
 async function send(){
-  const t=$("in").value.trim();if(!t||!cur)return;
-  $("in").value="";
+  let t=$("in").value.trim();if(!t||!cur)return;
+  t=cmd(t);if(!t)return;
+  $("in").value="";delete drafts[cur.id];
   const {data,error}=await sb.from("messages").insert({conversation_id:cur.id,body:t}).select().single();
   if(error)return alert(error.message);
   addMsg(data);
@@ -525,7 +542,10 @@ $("out").onclick=async()=>{await sb.auth.signOut();location.reload()};
 $("list").onclick=e=>{const r=e.target.closest(".row");if(r)open(r.dataset.id)};
 $("q").oninput=renderList;
 $("send").onclick=send;
-$("in").onkeydown=e=>{if(e.key=="Enter")send()};
+$("in").onkeydown=e=>{
+  if(e.key=="Enter")send();
+  if(e.key=="ArrowUp"&&!$("in").value&&cur){const mine=[...cur.msgs].reverse().find(m=>m[0]==uname&&m[3]&&m[1]);if(mine){e.preventDefault();editMsg(mine[3])}}
+};
 $("back").onclick=()=>$("app").classList.remove("chat");
 $("call").onclick=()=>ring&&ring.cid==cur.id?accept():begin(cur.id,true);
 $("ce").onclick=leave;
@@ -666,7 +686,7 @@ function showEmpty(){
   $("app").classList.remove("chat");renderList();
 }
 const names2=s=>s.split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
-$("more").onclick=e=>{e.stopPropagation();if(!cur)return;$("mAdd").hidden=$("mRen").hidden=!cur.group;$("emo").hidden=true;$("menu").hidden=!$("menu").hidden};
+$("more").onclick=e=>{e.stopPropagation();if(!cur)return;$("mAdd").hidden=$("mRen").hidden=!cur.group;$("mMute").textContent=muted2.has(cur.id)?"Unmute chat":"Mute chat";$("emo").hidden=true;$("menu").hidden=!$("menu").hidden};
 $("mAdd").onclick=async()=>{
   const u=prompt("Usernames to add (separate with commas)");if(!u)return;
   const r=await sb.rpc("add_to_chat",{p_cid:cur.id,p_usernames:names2(u)});
@@ -782,6 +802,80 @@ async function checkGif(f){
   });
   return f;
 }
+let mq="",TH={mode:"auto",acc:""},muted2=new Set();
+const drafts={},ACC=["","#0f766e","#7c5cff","#ff5f9e","#ff8a3d","#2d9cff","#2fbf71"];
+try{muted2=new Set(JSON.parse(localStorage.getItem("talker-muted")||"[]"))}catch(e){}
+try{TH=Object.assign(TH,JSON.parse(localStorage.getItem("talker-theme")||"{}"))}catch(e){}
+const saveMuted=()=>{try{localStorage.setItem("talker-muted",JSON.stringify([...muted2]))}catch(e){}};
+const dayOf=t=>new Date(t).toDateString();
+function dayLabel(t){
+  const d=new Date(t),n=new Date(),y=new Date(Date.now()-864e5);
+  return d.toDateString()==n.toDateString()?"Today":d.toDateString()==y.toDateString()?"Yesterday":d.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric",year:d.getFullYear()==n.getFullYear()?undefined:"numeric"});
+}
+function rich(t){
+  return esc(t).split(/(https?:\/\/[^\s<]+)/g).map((p,i)=>i%2?'<a href="'+p+'" target="_blank" rel="noopener noreferrer">'+p+'</a>':p
+    .replace(/\|\|(.+?)\|\|/g,'<span class="spoil">$1</span>')
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\*\*(.+?)\*\*/g,"<b>$1</b>")
+    .replace(/(^|[^*])\*([^*]+)\*(?!\*)/g,"$1<i>$2</i>")
+    .replace(/~~(.+?)~~/g,"<s>$1</s>")).join("");
+}
+const rnd=n=>{const a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n};
+const pick=a=>a[rnd(a.length)];
+function cmd(t){
+  if(t[0]!="/")return t;
+  const [c,...r]=t.split(" "),a=r.join(" ").trim(),pre=a?a+" ":"";
+  switch(c.toLowerCase()){
+    case "/shrug":return pre+"¯\\_(ツ)_/¯";
+    case "/tableflip":return pre+"(╯°□°)╯︵ ┻━┻";
+    case "/unflip":return pre+"┬─┬ ノ( ゜-゜ノ)";
+    case "/me":return a?"*"+uname+" "+a+"*":null;
+    case "/flip":return "🪙 "+(rnd(2)?"Heads":"Tails");
+    case "/party":return "🎉 Party time! 🎉";
+    case "/roll":{
+      const m=/^(\d{1,2})?d(\d{1,3})$/i.exec(a||"d20"),n=m?+(m[1]||1):0,d=m?+m[2]:0;
+      if(!m||n<1||d<2){alert("Try /roll d20 or /roll 2d6");return null}
+      const rs=Array.from({length:n},()=>rnd(d)+1);
+      return "🎲 rolled "+(a||"d20")+": "+rs.join(", ")+(n>1?" (total "+rs.reduce((x,y)=>x+y,0)+")":"");
+    }
+    case "/8ball":return "🎱 "+(a?"“"+a+"” ":"")+pick(["It is certain.","Without a doubt.","Yes, definitely.","Most likely.","Ask again later.","Cannot predict now.","Don’t count on it.","My sources say no.","Very doubtful."]);
+    case "/choose":{
+      const o=a.split(/[|,]/).map(x=>x.trim()).filter(Boolean);
+      if(o.length<2){alert("Try /choose pizza | tacos | sushi");return null}
+      return "🤔 I choose: "+pick(o);
+    }
+    default:return t;
+  }
+}
+function confetti(){
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  const c=document.createElement("canvas");
+  c.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50";
+  c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);
+  const x=c.getContext("2d"),P=Array.from({length:120},()=>({x:Math.random()*c.width,y:-20-Math.random()*c.height*.4,vx:Math.random()*4-2,vy:2+Math.random()*4,s:5+Math.random()*6,r:Math.random()*6,h:Math.random()*360}));
+  let f=0;
+  (function t(){
+    x.clearRect(0,0,c.width,c.height);
+    P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.r+=.1;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle="hsl("+p.h+" 90% 60%)";x.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);x.restore()});
+    if(++f<150)requestAnimationFrame(t);else c.remove();
+  })();
+}
+function applyTheme(){
+  const r=document.documentElement;
+  if(TH.mode=="light"||TH.mode=="dark")r.dataset.theme=TH.mode;else r.removeAttribute("data-theme");
+  if(/^#[0-9a-f]{6}$/i.test(TH.acc)){
+    const n=parseInt(TH.acc.slice(1),16),L=.299*(n>>16)+.587*((n>>8)&255)+.114*(n&255);
+    r.style.setProperty("--accent",TH.acc);r.style.setProperty("--on",L>150?"#1a1a10":"#fff");
+  }else{r.style.removeProperty("--accent");r.style.removeProperty("--on")}
+  try{localStorage.setItem("talker-theme",JSON.stringify(TH))}catch(e){}
+}
+applyTheme();
+$("accs").innerHTML=ACC.map(c=>'<button class="sw" data-c="'+c+'" aria-label="Accent color '+(c||"default")+'" style="background:'+(c||"var(--hover)")+'">'+(c?"":"↺")+"</button>").join("");
+$("accs").onclick=e=>{const b=e.target.closest(".sw");if(b){TH.acc=b.dataset.c;applyTheme()}};
+$("thm").onchange=()=>{TH.mode=$("thm").value;applyTheme()};
+$("mSearch").onclick=()=>{const q=prompt("Search this chat");if(q===null)return;mq=q.trim().toLowerCase();renderMsgs()};
+$("mMute").onclick=()=>{muted2.has(cur.id)?muted2.delete(cur.id):muted2.add(cur.id);saveMuted();renderList()};
+addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()=="k"&&me){e.preventDefault();$("findBtn").click()}});
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -792,12 +886,12 @@ $("pc1").oninput=()=>{pfx.c1=$("pc1").value;drawFx()};
 $("pc2").oninput=()=>{pfx.c2=$("pc2").value;drawFx()};
 function drawPick(){$("dpick").innerHTML=DECS.filter(d=>d!="owner"||isOwner).map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+'</button>').join("")}
 $("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
-$("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("pdisc").checked=disc;$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
+$("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("thm").value=TH.mode;$("pdisc").checked=disc;$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
 function card(u){
   $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cun").textContent="@"+u;
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);const id=Object.keys(names).find(k=>names[k]==u)||known[u],b=$("cblock"),d=$("cdm");d.hidden=!id||id==me;d.dataset.u=u;b.hidden=!id||id==me;b.dataset.id=id||"";b.textContent=blocked.has(id)?"Unblock":"Block";$("card").hidden=false;
 }
-$("msgs").onclick=e=>{const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
+$("msgs").onclick=e=>{if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
 $("hav").onclick=()=>{if(cur&&!cur.group)card(cur.name)};
 $("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
