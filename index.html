@@ -252,6 +252,29 @@ header .av{--side:var(--room);width:44px;height:44px}
 .bmc:hover{transform:translateY(-1px)}
 .bmc:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.bmc{transition:none}.bmc:hover{transform:none}}
+body{font-size:var(--fs,15px)}
+.av.dnd::after{content:"";position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:50%;border:2.5px solid var(--side);background:var(--red)}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.seg button{background:var(--panel)}
+.seg button.sel{background:var(--accent);color:var(--on)}
+[data-density="compact"] .m{margin-top:8px}
+[data-density="compact"] .m.c{margin-top:2px}
+[data-density="compact"] .t{padding:6px 12px}
+[data-density="compact"] .row{padding:6px 10px}
+[data-bg="dots"] .msgs{background:radial-gradient(var(--hover) 1.3px,transparent 1.6px) 0 0/22px 22px}
+[data-bg="grid"] .msgs{background:linear-gradient(var(--hover) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,var(--hover) 1px,transparent 1px) 0 0/28px 28px}
+[data-bg="glow"] .msgs{background:radial-gradient(520px 260px at 85% 0%,color-mix(in srgb,var(--accent) 16%,transparent),transparent),radial-gradient(460px 260px at 0% 100%,color-mix(in srgb,#8b5cf6 16%,transparent),transparent)}
+[data-layout="classic"] .m{align-items:flex-start}
+[data-layout="classic"] .m.mine{flex-direction:row}
+[data-layout="classic"] .m.mine>div:not(.gap):not(.t){align-items:flex-start}
+[data-layout="classic"] .m.mine .hd{text-align:left}
+[data-layout="classic"] .t,[data-layout="classic"] .m.c .t,[data-layout="classic"] .m.mine .t,[data-layout="classic"] .m.mine.c .t{background:none;color:inherit;padding:0;border-radius:0}
+[data-layout="classic"] .m.mine .t a{color:var(--accent);text-decoration:none}
+[data-layout="classic"] .m.mine .t small{color:var(--mute);opacity:1}
+[data-layout="classic"] .m.mine .t code{background:var(--panel)}
+[data-layout="classic"] .m.mine .spoil{background:var(--mute)}
+[data-layout="classic"] .m.mine .spoil.on{background:var(--panel);color:inherit}
+[data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{animation:none!important;transition:none!important}
 @media (max-width:700px){.app{padding:0;gap:0}.side{width:100%}.side,.main{border-radius:0}}
 </style>
 </head>
@@ -270,6 +293,7 @@ header .av{--side:var(--room);width:44px;height:44px}
       <div class="mi"><b id="un"></b><small id="uh"></small></div>
       <button id="mic" title="Mute microphone" aria-label="Mute microphone">🎤</button>
       <button id="spk" title="Deafen" aria-label="Deafen">🎧</button>
+      <button id="lookBtn" title="Appearance" aria-label="Appearance">🎨</button>
       <button id="edit" title="Edit profile" aria-label="Edit profile">⚙</button>
       <button id="out" title="Log out" aria-label="Log out">⎋</button>
     </div>
@@ -318,6 +342,17 @@ header .av{--side:var(--room);width:44px;height:44px}
     <button class="callbtn" id="accept">Join</button>
     <button id="decline">Decline</button>
   </div>
+  <div class="call" id="look" hidden>
+    <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(520px,94%)">
+      <div class="brand" style="padding:0">Appearance <button id="lookclose" aria-label="Close">✕</button></div>
+      <small>These settings are saved on this device only.</small>
+      <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:14px">
+        <div><small>Theme</small><select id="thm" aria-label="Theme" style="width:100%;margin-top:6px"><option value="auto">Match my device</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+        <div><small>Accent color</small><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px"><div id="accs" style="display:flex;gap:8px;flex-wrap:wrap"></div><input type="color" id="accc" aria-label="Custom accent color"></div></div>
+        <div id="lookopts" style="display:flex;flex-direction:column;gap:14px"></div>
+      </div>
+    </div>
+  </div>
   <div class="call" id="shop" hidden>
     <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(520px,94%);padding:16px 0">
       <div class="brand" style="padding:0">Points shop <button id="shopclose" aria-label="Close">✕</button></div>
@@ -347,6 +382,7 @@ header .av{--side:var(--room);width:44px;height:44px}
         <div id="cav"></div>
         <div class="brand" id="cdn" style="padding:0"></div>
         <small id="cun"></small>
+        <small id="cst"></small>
         <div id="cbio" style="white-space:pre-wrap;word-break:break-word"></div>
         <button class="callbtn" id="cdm" hidden>Message</button>
         <button id="cblock" hidden>Block</button>
@@ -368,12 +404,14 @@ header .av{--side:var(--room);width:44px;height:44px}
       <label style="display:flex;gap:8px;align-items:center;justify-content:center"><input type="checkbox" id="pdisc"><small>Show me in Find people</small></label>
       <input id="pd" placeholder="Display name (optional)" aria-label="Display name" maxlength="32">
       <textarea id="pb" placeholder="Bio (optional)" aria-label="Bio" maxlength="190"></textarea>
+      <input id="ppr" placeholder="Pronouns (optional)" aria-label="Pronouns" maxlength="20">
+      <input id="pstx" placeholder="Custom status (optional)" aria-label="Custom status" maxlength="60">
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center"><small>Name color</small><input type="color" id="pnc" aria-label="Name color"><button id="pncx">Default</button></div>
+      <select id="pstat" aria-label="Status"><option value="on">Online</option><option value="idle">Idle</option><option value="dnd">Do not disturb</option><option value="invisible">Invisible</option></select>
       <input id="pn" placeholder="Username" aria-label="Username" maxlength="20">
       <button class="callbtn" id="psave">Save</button>
       <button id="pclose">Cancel</button>
-      <small style="text-align:center">App theme (this device only)</small>
-      <select id="thm" aria-label="Theme"><option value="auto">Match my device</option><option value="light">Light</option><option value="dark">Dark</option></select>
-      <div id="accs" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"></div>
+      
       <small style="text-align:center">Account security</small>
       <button id="cpw">Change password</button>
       <button id="lgall">Log out of all devices</button>
@@ -422,7 +460,7 @@ const av=(n,cls="",d)=>{const u=pics[n],ok=u&&u.startsWith(SUPABASE_URL);return 
 const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true,pext="jpg";
-const fmt=t=>new Date(t).toTimeString().slice(0,5);
+const fmt=t=>UI.clock=="12"?new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):new Date(t).toTimeString().slice(0,5);
 const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at];
 function renderList(){
@@ -430,8 +468,8 @@ function renderList(){
   $("list").innerHTML=D.filter(c=>(c.name+" "+dn(c.name)).toLowerCase().includes(f)).map(c=>{
     const l=[...c.msgs].reverse().find(m=>!blocked.has(m[6]));
     const prev=l?(l[0]==uname?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||"📷 Photo"):"No messages yet";
-    return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name,c.group?"":(isOn(c)?"on":"off"))+
-      '<div class="ri"><b>'+esc(c.group?c.name:dn(c.name))+(muted2.has(c.id)?" 🔕":"")+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
+    return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.name,stat(c))+
+      '<div class="ri"><b'+(c.group?"":nst(c.name))+'>'+esc(c.group?c.name:dn(c.name))+(muted2.has(c.id)?" 🔕":"")+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
       (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
   }).join("")||'<div class="empty">'+(D.length?"No chats match your search.":"No chats yet. Tap ＋ to start one.")+'</div>';
   const n=D.reduce((a,c)=>a+c.unread,0);document.title=(n?"("+n+") ":"")+"Talker";
@@ -442,7 +480,7 @@ function renderMsgs(){
     if(!p||dayOf(m[7])!=dayOf(p[7])){h+='<div class="dsep">'+dayLabel(m[7])+'</div>';p=null}
     h+=p&&p[0]==m[0]
       ?'<div class="m c'+(m[0]==uname?" mine":"")+'"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
-      :'<div class="m'+(m[0]==uname?" mine":"")+'" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b>'+esc(dn(m[0]))+'</b><small>'+m[2]+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
+      :'<div class="m'+(m[0]==uname?" mine":"")+'" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b'+nst(m[0])+'>'+esc(dn(m[0]))+'</b><small>'+fmt(m[7])+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
     p=m;
   });
   if(mq)h='<div class="dsep">Results for “'+esc(mq)+'” <button id="clrq">Clear</button></div>'+h;
@@ -471,11 +509,11 @@ function addMsg(m){
   renderList();
 }
 async function load(){
-  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration,display_name,bio,effect,color1,color2),conversations(id,name,is_group)");
+  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color),conversations(id,name,is_group)");
   if(error)return alert(error.message);
   const map={};
   ms.forEach(r=>{
-    names[r.user_id]=r.profiles.username;pics[r.profiles.username]=r.profiles.avatar_url;decs[r.profiles.username]=r.profiles.decoration;disp[r.profiles.username]=r.profiles.display_name;bios[r.profiles.username]=r.profiles.bio;fxs[r.profiles.username]={e:r.profiles.effect,c1:r.profiles.color1,c2:r.profiles.color2};
+    names[r.user_id]=r.profiles.username;pics[r.profiles.username]=r.profiles.avatar_url;decs[r.profiles.username]=r.profiles.decoration;disp[r.profiles.username]=r.profiles.display_name;bios[r.profiles.username]=r.profiles.bio;fxs[r.profiles.username]={e:r.profiles.effect,c1:r.profiles.color1,c2:r.profiles.color2};pron[r.profiles.username]=r.profiles.pronouns;stxt[r.profiles.username]=r.profiles.status_text;ncol[r.profiles.username]=r.profiles.name_color;
     const c=map[r.conversation_id]||(map[r.conversation_id]={id:r.conversation_id,raw:r.conversations.name,group:r.conversations.is_group,members:[],msgs:[],unread:0});
     c.members.push({id:r.user_id,name:r.profiles.username});
   });
@@ -632,13 +670,13 @@ function leave(){
 async function enter(u){
   me=u.id;$("staffBtn").hidden=true;myRank=0;
   const ss=(await sb.auth.getSession()).data.session;if(ss)sb.realtime.setAuth(ss.access_token);
-  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable,role,banned_at,ban_reason,timeout_until,points").eq("id",me).single();
+  const {data:p,error}=await sb.from("profiles").select("username,avatar_url,decoration,display_name,bio,effect,color1,color2,is_owner,discoverable,role,banned_at,ban_reason,timeout_until,points,pronouns,status_text,name_color").eq("id",me).single();
   if(error)return $("ae").textContent=error.message;
   uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;
   if(p.banned_at){await sb.auth.signOut();return $("ae").textContent="You are banned from Talker."+(p.ban_reason?" Reason: "+p.ban_reason:"")}
   myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;
   tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;
-  pts=p.points||0;paintPts();loadShop();pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};
+  pts=p.points||0;paintPts();loadShop();pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};pron[uname]=p.pronouns;stxt[uname]=p.status_text;ncol[uname]=p.name_color;
   $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
   $("auth").hidden=true;
   await load();listen();
@@ -751,27 +789,23 @@ async function share(){
 $("cx").onclick=share;
 $("stage").ondblclick=e=>{if(e.target.tagName=="VIDEO"&&e.target.requestFullscreen)e.target.requestFullscreen()};
 if(!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia))$("cx").hidden=true;
-let online=new Set(),ac,ringIv,lt=0,lt2;
+let online=new Map(),presCh,ac,ringIv,lt=0,lt2;
 const tt={};
 const EM="😀 😂 🥹 😍 😘 😎 🤔 😅 😭 😡 👍 👎 👏 🙏 🔥 ✨ 🎉 💖 💔 💯 😴 🤯 🥳 👀 🙌 💪 🤝 😬".split(" ");
-const isOn=c=>!c.group&&online.has((c.members.find(m=>m.id!=me)||{}).id);
+const stat=c=>{if(c.group)return "";const u=(c.members.find(m=>m.id!=me)||{}).id;return online.has(u)?online.get(u):"off"};
 const reload=()=>{clearTimeout(lt2);lt2=setTimeout(load,300)};
 function beep(f,d,t=0){
+  if(UI.sound=="off"||UI.status=="dnd")return;
   try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(ac.destination);o.start(ac.currentTime+t);o.stop(ac.currentTime+t+d)}catch(e){}
 }
 function ping(c,m){
   beep(880,.1);beep(1175,.12,.12);
-  if(document.hidden&&window.Notification&&Notification.permission=="granted")try{new Notification(dn(names[m.user_id])+(c.group?" in "+c.name:""),{body:m.body||"📷 Photo"})}catch(e){}
+  if(document.hidden&&window.Notification&&Notification.permission=="granted"&&UI.status!="dnd")try{new Notification(dn(names[m.user_id])+(c.group?" in "+c.name:""),{body:m.body||"📷 Photo"})}catch(e){}
 }
 function paintHead(){
   if(!cur)return;
-  $("hav").innerHTML=av(cur.name,cur.group?"":(isOn(cur)?"on":"off"));
-  $("hs").textContent=cur.group?cur.members.map(m=>dn(m.name)).join(", "):"@"+cur.name+(isOn(cur)?" (online)":"");
-}
-function presence(){
-  const ch=sb.channel("online",{config:{private:PRIVATE_RT,presence:{key:me}}});
-  ch.on("presence",{event:"sync"},()=>{online=new Set(Object.keys(ch.presenceState()));renderList();paintHead()})
-    .subscribe(s=>{if(s=="SUBSCRIBED")ch.track({at:Date.now()})});
+  $("hav").innerHTML=av(cur.name,stat(cur));
+  $("hs").textContent=cur.group?cur.members.map(m=>dn(m.name)).join(", "):"@"+cur.name+({on:" (online)",idle:" (idle)",dnd:" (do not disturb)"}[stat(cur)]||"")+(stxt[cur.name]?" “"+stxt[cur.name]+"”":"");
 }
 function typing(cid,p){
   if(!p||p.from==me||!names[p.from])return;
@@ -838,7 +872,7 @@ $("emo").innerHTML=EM.map(e=>"<button>"+e+"</button>").join("");
 $("emj").onclick=e=>{e.stopPropagation();$("menu").hidden=true;$("emo").hidden=!$("emo").hidden};
 $("emo").onclick=e=>{e.stopPropagation();const b=e.target.closest("button");if(b){$("in").value+=b.textContent;$("in").focus()}};
 document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true;$("cmds").hidden=true});
-addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff","shop"].forEach(i=>$(i).hidden=true)});
+addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff","shop","look"].forEach(i=>$(i).hidden=true)});
 addEventListener("click",()=>{try{ac=ac||new AudioContext();ac.resume()}catch(e){}if(window.Notification&&Notification.permission=="default")Notification.requestPermission()},{once:true});
 $("pw").onkeydown=e=>{if(e.key=="Enter")$("login").click()};
 $("helpBtn").onclick=()=>$("help").hidden=false;
@@ -886,7 +920,7 @@ const known={};let fpage=0,ft;
 async function findPeople(reset){
   if(reset){fpage=0;$("fres").innerHTML="";}
   const q=$("fq").value.trim().replace(/[^\p{L}\p{N}_ \-]/gu,"").slice(0,32);
-  let qb=sb.from("profiles").select("id,username,avatar_url,decoration,display_name,bio,effect,color1,color2").neq("id",me).order("username").range(fpage*30,fpage*30+29);
+  let qb=sb.from("profiles").select("id,username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color").neq("id",me).order("username").range(fpage*30,fpage*30+29);
   if(q)qb=qb.or('username.ilike."*'+q+'*",display_name.ilike."*'+q+'*"');
   if(blocked.size)qb=qb.not("id","in","("+[...blocked].join(",")+")");
   const {data,error}=await qb;
@@ -896,7 +930,7 @@ async function findPeople(reset){
   $("fres").insertAdjacentHTML("beforeend",data.map(r=>{
     const u=r.username;
     pics[u]=r.avatar_url;decs[u]=r.decoration;disp[u]=r.display_name;bios[u]=r.bio;
-    fxs[u]={e:r.effect,c1:r.color1,c2:r.color2};known[u]=r.id;
+    fxs[u]={e:r.effect,c1:r.color1,c2:r.color2};known[u]=r.id;pron[u]=r.pronouns;stxt[u]=r.status_text;ncol[u]=r.name_color;
     return '<div class="row" data-u="'+esc(u)+'">'+av(u)+'<div class="ri"><b>'+esc(dn(u))+'</b><small>@'+esc(u)+'</small>'+(r.bio?'<small>'+esc(r.bio)+'</small>':"")+'</div><button class="fm" data-dm="'+esc(u)+'">Message</button></div>';
   }).join("")+(data.length==30?'<button id="fmore" style="width:100%;margin-top:8px">Load more</button>':""));
 }
@@ -977,7 +1011,7 @@ function cmd(t){
   }
 }
 function confetti(){
-  if(matchMedia("(prefers-reduced-motion:reduce)").matches)return;
+  if(UI.motion=="off"||matchMedia("(prefers-reduced-motion:reduce)").matches)return;
   const c=document.createElement("canvas");
   c.style.cssText="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50";
   c.width=innerWidth;c.height=innerHeight;document.body.appendChild(c);
@@ -1121,6 +1155,52 @@ $("shoplist").onclick=async e=>{
   if(r.error)return alert(r.error.message);
   owned.add(i.id);pts=r.data;paintPts();drawShop();
 };
+let UI={layout:"bubbles",size:"m",density:"cozy",bg:"none",clock:"24",sound:"on",motion:"on",status:"on"},pnc=null;
+try{UI=Object.assign(UI,JSON.parse(localStorage.getItem("talker-ui")||"{}"))}catch(e){}
+const saveUI=()=>{try{localStorage.setItem("talker-ui",JSON.stringify(UI))}catch(e){}};
+const FS={s:"13.5px",m:"15px",l:"17px",xl:"19px"};
+const pron={},stxt={},ncol={};
+const nst=u=>HEX.test(ncol[u])?' style="color:'+ncol[u]+'"':"";
+const OPTS=[
+  ["layout","Message layout",[["bubbles","Bubbles"],["classic","Classic"]]],
+  ["size","Text size",[["s","Small"],["m","Medium"],["l","Large"],["xl","Extra large"]]],
+  ["density","Spacing",[["cozy","Cozy"],["compact","Compact"]]],
+  ["bg","Chat background",[["none","None"],["dots","Dots"],["grid","Grid"],["glow","Glow"]]],
+  ["clock","Clock",[["24","24-hour"],["12","12-hour"]]],
+  ["sound","Sounds",[["on","On"],["off","Off"]]],
+  ["motion","Animations",[["on","On"],["off","Off"]]]
+];
+function applyUI(){
+  const r=document.documentElement;
+  r.dataset.layout=UI.layout;r.dataset.density=UI.density;r.dataset.bg=UI.bg;r.dataset.motion=UI.motion;
+  r.style.setProperty("--fs",FS[UI.size]||"15px");
+}
+function drawLook(){
+  $("lookopts").innerHTML=OPTS.map(([k,l,vs])=>"<div><small>"+l+'</small><div class="seg">'+vs.map(([v,t])=>'<button data-k="'+k+'" data-v="'+v+'" class="'+(UI[k]==v?"sel":"")+'">'+t+"</button>").join("")+"</div></div>").join("");
+}
+function setPresence(){
+  if(!presCh)return;
+  if(UI.status=="invisible")presCh.untrack();else presCh.track({s:UI.status});
+}
+function presence(){
+  const ch=sb.channel("online",{config:{private:PRIVATE_RT,presence:{key:me}}});
+  ch.on("presence",{event:"sync"},()=>{
+    online=new Map(Object.entries(ch.presenceState()).map(([k,v])=>[k,(v[0]&&v[0].s)||"on"]));
+    renderList();paintHead();
+  }).subscribe(s=>{if(s=="SUBSCRIBED"){presCh=ch;setPresence()}});
+}
+$("lookopts").onclick=e=>{
+  const b=e.target.closest("button[data-k]");if(!b)return;
+  UI[b.dataset.k]=b.dataset.v;saveUI();applyUI();drawLook();
+  if(b.dataset.k=="clock"&&cur)renderMsgs();
+};
+$("lookBtn").onclick=()=>{$("thm").value=TH.mode;$("accc").value=HEX.test(TH.acc)?TH.acc:"#ffa24c";drawLook();$("look").hidden=false};
+$("lookclose").onclick=()=>$("look").hidden=true;
+$("accc").oninput=()=>{TH.acc=$("accc").value;applyTheme()};
+$("pnc").oninput=()=>{pnc=$("pnc").value};
+$("pncx").onclick=()=>{pnc=null;$("pnc").value="#ffffff"};
+$("pstat").onchange=()=>{UI.status=$("pstat").value;saveUI();setPresence()};
+applyUI();
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -1131,9 +1211,9 @@ $("pc1").oninput=()=>{pfx.c1=$("pc1").value;drawFx()};
 $("pc2").oninput=()=>{pfx.c2=$("pc2").value;drawFx()};
 function drawPick(){$("dpick").innerHTML=DECS.filter(d=>d!="owner"||isOwner).map(d=>'<button class="dp'+(d==pdec?" sel":"")+'" data-d="'+d+'" title="'+d+'" aria-label="'+d+'">'+av(uname,"",d)+(locked("dec:"+d)?'<small>🔒</small>':"")+'</button>').join("")}
 $("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;if(locked("dec:"+b.dataset.d))return alert("Unlock this in the ⭐ shop first.");pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
-$("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("thm").value=TH.mode;$("pdisc").checked=disc;$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
+$("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[uname]||"";$("thm").value=TH.mode;$("pdisc").checked=disc;$("ppr").value=pron[uname]||"";$("pstx").value=stxt[uname]||"";pnc=HEX.test(ncol[uname])?ncol[uname]:null;$("pnc").value=pnc||"#ffffff";$("pstat").value=UI.status;$("pb").value=bios[uname]||"";const f=fxs[uname]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[uname]||"none";$("pav").innerHTML=av(uname,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
 function card(u){
-  $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cun").textContent="@"+u;
+  $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cdn").style.color=HEX.test(ncol[u])?ncol[u]:"";$("cun").textContent="@"+u+(pron[u]?" ("+pron[u]+")":"");$("cst").textContent=stxt[u]?"“"+stxt[u]+"”":"";
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);const id=Object.keys(names).find(k=>names[k]==u)||known[u],b=$("cblock"),d=$("cdm");d.hidden=!id||id==me;d.dataset.u=u;b.hidden=!id||id==me;b.dataset.id=id||"";b.textContent=blocked.has(id)?"Unblock":"Block";$("card").hidden=false;
 }
 $("msgs").onclick=e=>{if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
@@ -1148,7 +1228,7 @@ $("file").onchange=async e=>{
 $("psave").onclick=async()=>{
   const un=$("pn").value.trim().toLowerCase();
   if(!/^[a-z0-9_]{3,20}$/.test(un))return $("pe").textContent="Username: 3 to 20 letters, numbers or underscores.";
-  const upd={username:un,discoverable:$("pdisc").checked,display_name:$("pd").value.trim()||null,bio:$("pb").value.trim()||null,effect:pfx.e=="none"?null:pfx.e,color1:pfx.e=="none"?null:pfx.c1,color2:pfx.e=="none"?null:pfx.c2,decoration:pdec=="none"?null:pdec};
+  const upd={username:un,discoverable:$("pdisc").checked,pronouns:$("ppr").value.trim()||null,status_text:$("pstx").value.trim()||null,name_color:pnc,display_name:$("pd").value.trim()||null,bio:$("pb").value.trim()||null,effect:pfx.e=="none"?null:pfx.e,color1:pfx.e=="none"?null:pfx.c1,color2:pfx.e=="none"?null:pfx.c2,decoration:pdec=="none"?null:pdec};
   try{
     if(pend){
       const path=me+"."+pext;
@@ -1161,7 +1241,7 @@ $("psave").onclick=async()=>{
     if(r.error)throw r.error;
   }catch(e){return $("pe").textContent=e.code=="23505"?"That username is taken.":e.message}
   const old=uname;uname=un;names[me]=un;
-  pics[un]=upd.avatar_url||pics[old];decs[un]=upd.decoration;disp[un]=upd.display_name;bios[un]=upd.bio;disc=upd.discoverable;fxs[un]=upd.effect?{e:upd.effect,c1:upd.color1,c2:upd.color2}:null;pend=null;
+  pics[un]=upd.avatar_url||pics[old];decs[un]=upd.decoration;disp[un]=upd.display_name;bios[un]=upd.bio;disc=upd.discoverable;pron[un]=upd.pronouns;stxt[un]=upd.status_text;ncol[un]=upd.name_color;fxs[un]=upd.effect?{e:upd.effect,c1:upd.color1,c2:upd.color2}:null;pend=null;
   $("un").textContent=dn(un);$("uh").textContent="@"+un;$("myav").innerHTML=av(un,"on");
   $("prof").hidden=true;await load();
 };
