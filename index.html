@@ -1239,7 +1239,7 @@ $("stabs").onclick=e=>{const b=e.target.closest("button[data-t]");if(b)staffTab(
 $("rst").onchange=()=>reportsList();
 async function reportsList(){
   const r=await sb.rpc("staff_list_reports",{p_status:$("rst").value});
-  if(r.error)return $("sres").innerHTML='<div class="empty">'+esc(r.error.message)+"</div>";
+  if(r.error)return $("sres").innerHTML='<div class="empty">Could not load reports: '+esc(r.error.message)+(/function|schema cache|permission/i.test(r.error.message)?"<br><small>The report database setup may be missing. Run the report SQL again, then reload this page.</small>":"")+"</div>";
   $("sres").innerHTML=r.data.map(x=>{
     const can=x.reported_id&&x.reported_id!=me&&x.reported_rank<myRank;
     const btn=(k,l,cls)=>'<button '+(cls?'class="'+cls+'" ':"")+'data-r="'+k+'" data-id="'+x.id+'" data-uid="'+(x.reported_id||"")+'" data-u="'+esc(x.reported_name||"")+'">'+l+"</button>";
@@ -1251,7 +1251,7 @@ async function reportsList(){
       +(x.status!="open"?"<div><small>"+x.status+(x.handled_by_name?" by @"+esc(x.handled_by_name):"")+(x.resolution?": "+esc(x.resolution):"")+"</small></div>":"")
       +'<div class="ra">'+(x.status=="open"?btn("res","Resolve","fm")+btn("dis","Dismiss"):btn("reo","Reopen"))
       +(can&&x.message_id?btn("del","🗑 Delete message"):"")+(can?btn("tmo","⏱ Time out"):"")+(can&&myRank>=2?btn("ban","🚫 Ban"):"")+"</div></div>";
-  }).join("")||'<div class="empty">No reports here.</div>';
+  }).join("")||'<div class="empty">No '+$("rst").value+' reports.</div>';
   document.querySelectorAll("#sres img[data-p]").forEach(i=>signed(i.dataset.p).then(u=>{if(u)i.src=u}));
 }
 async function reportAction(b){
