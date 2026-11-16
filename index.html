@@ -275,6 +275,13 @@ body{font-size:var(--fs,15px)}
 [data-layout="classic"] .m.mine .spoil{background:var(--mute)}
 [data-layout="classic"] .m.mine .spoil.on{background:var(--panel);color:inherit}
 [data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{animation:none!important;transition:none!important}
+.brand button#staffBtn{width:auto;padding:0 10px}
+.rep{background:var(--panel);border-radius:18px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
+.rep .rq{background:var(--bub);border-radius:12px;padding:8px 12px;white-space:pre-wrap;word-break:break-word}
+.rep details{font-size:13px;color:var(--mute)}
+.rep .ra{display:flex;flex-wrap:wrap;gap:6px}
+.rep .ra button{background:var(--hover)}
+.rep .ra button.fm{background:var(--accent)}
 @media (max-width:700px){.app{padding:0;gap:0}.side{width:100%}.side,.main{border-radius:0}}
 </style>
 </head>
@@ -364,7 +371,9 @@ body{font-size:var(--fs,15px)}
     <div class="authbox" style="margin:0 auto;flex:1;min-height:0;width:min(560px,94%);padding:16px 0">
       <div class="brand" style="padding:0">Staff tools <button id="sclose" aria-label="Close">✕</button></div>
       <small id="srole"></small>
+      <div class="seg" id="stabs" style="margin:0"><button data-t="users" class="sel">Users</button><button data-t="reports">Reports</button></div>
       <input id="sq" placeholder="Search users" aria-label="Search users" maxlength="32" autocomplete="off">
+      <select id="rst" aria-label="Report status" hidden><option value="open">Open reports</option><option value="resolved">Resolved</option><option value="dismissed">Dismissed</option></select>
       <div id="sres" style="flex:1;overflow:auto"></div>
     </div>
   </div>
@@ -461,7 +470,7 @@ const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true,pext="jpg";
 const fmt=t=>UI.clock=="12"?new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):new Date(t).toTimeString().slice(0,5);
-const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':"");
+const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==uname?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':(m[3]?'<span class="acts"><button data-a="r" data-id="'+m[3]+'" title="Report this message" aria-label="Report this message">⚑</button></span>':""));
 const tup=m=>[names[m.user_id]||"Unknown",m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at];
 function renderList(){
   const f=$("q").value.toLowerCase();
@@ -674,7 +683,7 @@ async function enter(u){
   if(error)return $("ae").textContent=error.message;
   uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;
   if(p.banned_at){await sb.auth.signOut();return $("ae").textContent="You are banned from Talker."+(p.ban_reason?" Reason: "+p.ban_reason:"")}
-  myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;
+  myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;if(myRank>=1)staffCount();
   tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;
   pts=p.points||0;paintPts();loadShop();pics[uname]=p.avatar_url;decs[uname]=p.decoration;disp[uname]=p.display_name;bios[uname]=p.bio;fxs[uname]={e:p.effect,c1:p.color1,c2:p.color2};pron[uname]=p.pronouns;stxt[uname]=p.status_text;ncol[uname]=p.name_color;
   $("un").textContent=dn(uname);$("uh").textContent="@"+uname;$("myav").innerHTML=av(uname,"on");
@@ -1101,6 +1110,7 @@ async function staffList(){
   }).join("")||'<div class="empty">No users found.</div>';
 }
 $("sres").onclick=async e=>{
+  const rb=e.target.closest("button[data-r]");if(rb)return reportAction(rb);
   const b=e.target.closest("button[data-a]");if(!b)return;
   const {a,id,u}=b.dataset;let r;
   if(a=="t"){
@@ -1121,7 +1131,7 @@ $("sres").onclick=async e=>{
   if(r&&r.error)return alert(r.error.message);
   staffList();
 };
-$("staffBtn").onclick=()=>{if(myRank<1)return;$("srole").textContent="Your role: "+ROLE[myRank];$("sq").value="";$("staff").hidden=false;staffList()};
+$("staffBtn").onclick=()=>{if(myRank<1)return;$("srole").textContent="Your role: "+ROLE[myRank];$("sq").value="";$("staff").hidden=false;staffTab("users")};
 $("sclose").onclick=()=>$("staff").hidden=true;
 $("sq").oninput=()=>{clearTimeout(sqt);sqt=setTimeout(staffList,300)};
 let pts=0,SHOP=[],owned=new Set();
@@ -1201,6 +1211,70 @@ $("pnc").oninput=()=>{pnc=$("pnc").value};
 $("pncx").onclick=()=>{pnc=null;$("pnc").value="#ffffff"};
 $("pstat").onchange=()=>{UI.status=$("pstat").value;saveUI();setPresence()};
 applyUI();
+let stab="users";
+const RREASONS=[["spam","Spam"],["harassment","Harassment or bullying"],["hate","Hate"],["sexual","Sexual content"],["violence","Violence or threats"],["scam","Scam"],["other","Something else"]];
+async function reportMsg(id){
+  const n=prompt("Why are you reporting this message?\nStaff will see it and a few messages before it.\n\n"+RREASONS.map((r,i)=>(i+1)+" = "+r[1]).join("\n")+"\n\nEnter a number:");
+  if(n===null)return;
+  const reason=(RREASONS[+n-1]||[])[0];
+  if(!reason)return alert("Enter a number from 1 to "+RREASONS.length+".");
+  const note=prompt("Anything staff should know? (optional)");
+  if(note===null)return;
+  const r=await sb.rpc("report_message",{p_message:id,p_reason:reason,p_note:note});
+  if(r.error)return alert(r.error.message);
+  alert("Thanks. Staff will review your report.");
+}
+async function staffCount(){
+  const r=await sb.rpc("staff_open_report_count"),n=r.data||0;
+  $("staffBtn").textContent="🛡"+(n?" "+n:"");
+}
+setInterval(()=>{if(myRank>=1)staffCount()},60000);
+function staffTab(t){
+  stab=t;
+  document.querySelectorAll("#stabs button").forEach(b=>b.classList.toggle("sel",b.dataset.t==t));
+  $("sq").hidden=t!="users";$("rst").hidden=t!="reports";
+  t=="users"?staffList():reportsList();
+}
+$("stabs").onclick=e=>{const b=e.target.closest("button[data-t]");if(b)staffTab(b.dataset.t)};
+$("rst").onchange=()=>reportsList();
+async function reportsList(){
+  const r=await sb.rpc("staff_list_reports",{p_status:$("rst").value});
+  if(r.error)return $("sres").innerHTML='<div class="empty">'+esc(r.error.message)+"</div>";
+  $("sres").innerHTML=r.data.map(x=>{
+    const can=x.reported_id&&x.reported_id!=me&&x.reported_rank<myRank;
+    const btn=(k,l,cls)=>'<button '+(cls?'class="'+cls+'" ':"")+'data-r="'+k+'" data-id="'+x.id+'" data-uid="'+(x.reported_id||"")+'" data-u="'+esc(x.reported_name||"")+'">'+l+"</button>";
+    const ctx=(x.context||[]).map(c=>"<div><b>@"+esc(c.username)+":</b> "+esc(c.body||"(image)")+"</div>").join("");
+    return '<div class="rep"><div><b>'+esc((RREASONS.find(a=>a[0]==x.reason)||[0,x.reason])[1])+'</b> <span class="tag">'+x.status+'</span><br><small>@'+esc(x.reporter_name||"deleted user")+" reported @"+esc(x.reported_name||"deleted user")+" on "+esc(new Date(x.created_at).toLocaleString())+"</small></div>"
+      +'<div class="rq">'+(x.body?esc(x.body):"")+(x.image_path?'<img class="pic" data-p="'+esc(x.image_path)+'" alt="Reported image">':"")+(!x.body&&!x.image_path?"(empty message)":"")+"</div>"
+      +(x.note?"<div><small>Reporter note: "+esc(x.note)+"</small></div>":"")
+      +(ctx?"<details><summary>Messages before it</summary>"+ctx+"</details>":"")
+      +(x.status!="open"?"<div><small>"+x.status+(x.handled_by_name?" by @"+esc(x.handled_by_name):"")+(x.resolution?": "+esc(x.resolution):"")+"</small></div>":"")
+      +'<div class="ra">'+(x.status=="open"?btn("res","Resolve","fm")+btn("dis","Dismiss"):btn("reo","Reopen"))
+      +(can&&x.message_id?btn("del","🗑 Delete message"):"")+(can?btn("tmo","⏱ Time out"):"")+(can&&myRank>=2?btn("ban","🚫 Ban"):"")+"</div></div>";
+  }).join("")||'<div class="empty">No reports here.</div>';
+  document.querySelectorAll("#sres img[data-p]").forEach(i=>signed(i.dataset.p).then(u=>{if(u)i.src=u}));
+}
+async function reportAction(b){
+  const {r,id,uid,u}=b.dataset;let x;
+  if(r=="res"||r=="dis"){
+    const note=prompt(r=="res"?"Resolution note (optional)":"Why dismiss? (optional)");if(note===null)return;
+    x=await sb.rpc("staff_resolve_report",{p_id:+id,p_status:r=="res"?"resolved":"dismissed",p_resolution:note});
+  }else if(r=="reo"){
+    x=await sb.rpc("staff_resolve_report",{p_id:+id,p_status:"open",p_resolution:null});
+  }else if(r=="del"){
+    if(!confirm("Delete this message for everyone?"))return;
+    x=await sb.rpc("staff_delete_message",{p_report:+id});
+  }else if(r=="tmo"){
+    const m=prompt("Time out @"+u+" for how many minutes? (max 40320)","10");if(m===null)return;
+    const n=parseInt(m,10);if(isNaN(n))return alert("Enter a number.");
+    x=await sb.rpc("staff_timeout",{p_user:uid,p_minutes:n,p_reason:"Report #"+id});
+  }else if(r=="ban"){
+    const why=prompt("Ban @"+u+"? Enter a reason (optional) or press Cancel.");if(why===null)return;
+    x=await sb.rpc("staff_ban",{p_user:uid,p_reason:why||"Report #"+id});
+  }
+  if(x&&x.error)return alert(x.error.message);
+  reportsList();staffCount();
+}
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -1216,7 +1290,7 @@ function card(u){
   $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cdn").style.color=HEX.test(ncol[u])?ncol[u]:"";$("cun").textContent="@"+u+(pron[u]?" ("+pron[u]+")":"");$("cst").textContent=stxt[u]?"“"+stxt[u]+"”":"";
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);const id=Object.keys(names).find(k=>names[k]==u)||known[u],b=$("cblock"),d=$("cdm");d.hidden=!id||id==me;d.dataset.u=u;b.hidden=!id||id==me;b.dataset.id=id||"";b.textContent=blocked.has(id)?"Unblock":"Block";$("card").hidden=false;
 }
-$("msgs").onclick=e=>{if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
+$("msgs").onclick=e=>{if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):ab.dataset.a=="r"?reportMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
 $("hav").onclick=()=>{if(cur&&!cur.group)card(cur.name)};
 $("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
