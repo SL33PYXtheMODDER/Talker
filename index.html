@@ -275,6 +275,7 @@ body{font-size:var(--fs,15px)}
 [data-layout="classic"] .m.mine .spoil{background:var(--mute)}
 [data-layout="classic"] .m.mine .spoil.on{background:var(--panel);color:inherit}
 [data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{animation:none!important;transition:none!important}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:92%;text-align:center}
 .brand button#staffBtn{width:auto;padding:0 10px}
 .rep{background:var(--panel);border-radius:18px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .rep .rq{background:var(--bub);border-radius:12px;padding:8px 12px;white-space:pre-wrap;word-break:break-word}
@@ -450,6 +451,18 @@ body{font-size:var(--fs,15px)}
       <button class="callbtn" id="hclose">Got it</button>
     </div>
   </div>
+  <div class="call" id="rpt" hidden>
+    <div class="authbox" style="text-align:center">
+      <div class="brand" style="padding:0;justify-content:center">Report message</div>
+      <small>Staff will see this message and a few messages before it.</small>
+      <select id="rreason" aria-label="Reason"></select>
+      <textarea id="rnote" placeholder="Anything staff should know? (optional)" aria-label="Note" maxlength="300"></textarea>
+      <button class="callbtn" id="rsend">Send report</button>
+      <button id="rcancel">Cancel</button>
+      <small id="rerr"></small>
+    </div>
+  </div>
+  <div id="toast" role="status" hidden></div>
   <div class="call" id="lb" hidden style="background:rgba(0,0,0,.88);align-items:center;justify-content:center"><img id="lbi" alt="" style="max-width:96%;max-height:92%;border-radius:8px"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -881,7 +894,7 @@ $("emo").innerHTML=EM.map(e=>"<button>"+e+"</button>").join("");
 $("emj").onclick=e=>{e.stopPropagation();$("menu").hidden=true;$("emo").hidden=!$("emo").hidden};
 $("emo").onclick=e=>{e.stopPropagation();const b=e.target.closest("button");if(b){$("in").value+=b.textContent;$("in").focus()}};
 document.addEventListener("click",()=>{$("menu").hidden=true;$("emo").hidden=true;$("cmds").hidden=true});
-addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff","shop","look"].forEach(i=>$(i).hidden=true)});
+addEventListener("keydown",e=>{if(e.key=="Escape")["card","prof","lb","menu","emo","help","finder","cmds","staff","shop","look","rpt"].forEach(i=>$(i).hidden=true)});
 addEventListener("click",()=>{try{ac=ac||new AudioContext();ac.resume()}catch(e){}if(window.Notification&&Notification.permission=="default")Notification.requestPermission()},{once:true});
 $("pw").onkeydown=e=>{if(e.key=="Enter")$("login").click()};
 $("helpBtn").onclick=()=>$("help").hidden=false;
@@ -1213,17 +1226,6 @@ $("pstat").onchange=()=>{UI.status=$("pstat").value;saveUI();setPresence()};
 applyUI();
 let stab="users";
 const RREASONS=[["spam","Spam"],["harassment","Harassment or bullying"],["hate","Hate"],["sexual","Sexual content"],["violence","Violence or threats"],["scam","Scam"],["other","Something else"]];
-async function reportMsg(id){
-  const n=prompt("Why are you reporting this message?\nStaff will see it and a few messages before it.\n\n"+RREASONS.map((r,i)=>(i+1)+" = "+r[1]).join("\n")+"\n\nEnter a number:");
-  if(n===null)return;
-  const reason=(RREASONS[+n-1]||[])[0];
-  if(!reason)return alert("Enter a number from 1 to "+RREASONS.length+".");
-  const note=prompt("Anything staff should know? (optional)");
-  if(note===null)return;
-  const r=await sb.rpc("report_message",{p_message:id,p_reason:reason,p_note:note});
-  if(r.error)return alert(r.error.message);
-  alert("Thanks. Staff will review your report.");
-}
 async function staffCount(){
   const r=await sb.rpc("staff_open_report_count"),n=r.data||0;
   $("staffBtn").textContent="🛡"+(n?" "+n:"");
@@ -1275,6 +1277,25 @@ async function reportAction(b){
   if(x&&x.error)return alert(x.error.message);
   reportsList();staffCount();
 }
+let rptId=null;
+function toast(t){
+  const e=$("toast");e.textContent=t;e.hidden=false;
+  clearTimeout(toast.t);toast.t=setTimeout(()=>{e.hidden=true},3500);
+}
+$("rreason").innerHTML='<option value="">Choose a reason…</option>'+RREASONS.map(r=>'<option value="'+r[0]+'">'+r[1]+"</option>").join("");
+function reportMsg(id){
+  rptId=id;$("rreason").value="";$("rnote").value="";$("rerr").textContent="";$("rpt").hidden=false;
+}
+$("rcancel").onclick=()=>$("rpt").hidden=true;
+$("rsend").onclick=async()=>{
+  const reason=$("rreason").value;
+  if(!reason)return $("rerr").textContent="Choose a reason first.";
+  $("rsend").disabled=true;
+  const r=await sb.rpc("report_message",{p_message:rptId,p_reason:reason,p_note:$("rnote").value});
+  $("rsend").disabled=false;
+  if(r.error)return $("rerr").textContent=r.error.message;
+  $("rpt").hidden=true;toast("Thanks. Staff will review your report.");
+};
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
