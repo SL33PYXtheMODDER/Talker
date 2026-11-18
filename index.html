@@ -129,9 +129,9 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 .fx-gradient,.fx-sparkle{background:linear-gradient(135deg,var(--c1),var(--c2))}
 .fx-flow{background:linear-gradient(120deg,var(--c1),var(--c2),var(--c1));background-size:300% 100%;animation:flow 6s ease-in-out infinite alternate}
 @keyframes flow{to{background-position:100% 0}}
-.fx-sparkle::before,.fx-sparkle::after,.fx-owner::before,.fx-owner::after{content:"";position:absolute;inset:0;animation:tw 2.4s ease-in-out infinite}
-.fx-sparkle::before,.fx-owner::before{background-image:radial-gradient(2px 2px at 20% 30%,#fff,transparent),radial-gradient(2px 2px at 70% 20%,#fff,transparent),radial-gradient(1.5px 1.5px at 50% 72%,#fff,transparent),radial-gradient(2px 2px at 88% 66%,#fff,transparent),radial-gradient(1.5px 1.5px at 8% 78%,#fff,transparent)}
-.fx-sparkle::after,.fx-owner::after{background-image:radial-gradient(2px 2px at 35% 18%,#fff,transparent),radial-gradient(1.5px 1.5px at 80% 45%,#fff,transparent),radial-gradient(2px 2px at 60% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 12% 50%,#fff,transparent);animation-delay:1.2s}
+.fx-sparkle::before,.fx-sparkle::after,.fx-owner::before,.fx-owner::after,.fx-coowner::before,.fx-coowner::after{content:"";position:absolute;inset:0;animation:tw 2.4s ease-in-out infinite}
+.fx-sparkle::before,.fx-owner::before,.fx-coowner::before{background-image:radial-gradient(2px 2px at 20% 30%,#fff,transparent),radial-gradient(2px 2px at 70% 20%,#fff,transparent),radial-gradient(1.5px 1.5px at 50% 72%,#fff,transparent),radial-gradient(2px 2px at 88% 66%,#fff,transparent),radial-gradient(1.5px 1.5px at 8% 78%,#fff,transparent)}
+.fx-sparkle::after,.fx-owner::after,.fx-coowner::after{background-image:radial-gradient(2px 2px at 35% 18%,#fff,transparent),radial-gradient(1.5px 1.5px at 80% 45%,#fff,transparent),radial-gradient(2px 2px at 60% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 12% 50%,#fff,transparent);animation-delay:1.2s}
 @keyframes tw{0%,100%{opacity:.15}50%{opacity:1}}
 .fx-snow{background:linear-gradient(180deg,var(--c1),var(--c2))}
 .fx-snow::before{content:"";position:absolute;inset:0;background-image:radial-gradient(2px 2px at 20px 20px,#fff,transparent),radial-gradient(2px 2px at 70px 60px,#fff,transparent),radial-gradient(1.5px 1.5px at 40px 95px,#fff,transparent),radial-gradient(2px 2px at 100px 35px,#fff,transparent);background-size:120px 120px;animation:fall 5s linear infinite}
@@ -168,7 +168,7 @@ input[type=color]{padding:2px;height:36px;width:56px;cursor:pointer}
 .inc[hidden]{display:none}
 .authbox{margin:auto;width:min(340px,92%);display:flex;flex-direction:column;gap:10px}
 @media (max-width:700px){.side{width:100%}.app.chat .side,.app:not(.chat) .main{display:none}.back{display:inline-block}}
-@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner,.d-emerald,.fx-glow,.fx-stars::before,.d-inferno::before,.d-mod,.d-admin,.fx-mod::before,.fx-admin::before,.fx-owner{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
+@media (prefers-reduced-motion:reduce){.tile{transition:none}.d-rainbow::before{animation:none}.d-owner,.d-emerald,.fx-glow,.fx-stars::before,.d-inferno::before,.d-mod,.d-admin,.fx-mod::before,.fx-admin::before,.fx-owner,.d-coowner,.fx-coowner{animation:none}.fx-flow,.fx-sparkle::before,.fx-sparkle::after,.fx-snow::before{animation:none}}
 </style>
 <style id="skin">
 /* Dusk: plum night, tangerine accent. Same features, new skin. */
@@ -299,6 +299,12 @@ body{font-size:var(--fs,15px)}
 .fx-admin::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,120,150,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(255,120,150,.22) 1px,transparent 1px);background-size:22px 22px;animation:gridmove 6s linear infinite}
 @keyframes gridmove{to{background-position:22px 22px}}
 .fx-owner{background:linear-gradient(120deg,#f5c542,#b388ff,#f5c542);background-size:300% 100%;animation:flow 6s ease-in-out infinite alternate}
+.d-coowner{box-shadow:0 0 0 3px #cfd8ff,0 0 14px 4px rgba(124,156,255,.7);animation:cop 2s ease-in-out infinite alternate}
+@keyframes cop{to{box-shadow:0 0 0 3px #7c9cff,0 0 22px 7px rgba(168,85,247,.85)}}
+.d-coowner::before{content:"💎";position:absolute;top:-10px;right:-8px;font-size:15px;line-height:1;z-index:1;pointer-events:none}
+.fx-coowner{background:linear-gradient(120deg,#1e2a78,#7c3aed,#1e2a78);background-size:300% 100%;animation:flow 7s ease-in-out infinite alternate}
+.tag.staff{background:var(--accent);color:var(--on);font-weight:700;font-size:11px;margin-left:6px}
+#crole .tag{margin-left:0}
 .brand button#staffBtn{width:auto;padding:0 10px}
 .rep{background:var(--panel);border-radius:18px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .rep .rq{background:var(--bub);border-radius:12px;padding:8px 12px;white-space:pre-wrap;word-break:break-word}
@@ -418,6 +424,7 @@ body{font-size:var(--fs,15px)}
       <div class="pb">
         <div id="cav"></div>
         <div class="brand" id="cdn" style="padding:0"></div>
+        <div id="crole"></div>
         <small id="cun"></small>
         <small id="cst"></small>
         <div id="cbio" style="white-space:pre-wrap;word-break:break-word"></div>
@@ -500,9 +507,9 @@ if(BLOCK_FRAMING&&window.top!==window.self){document.documentElement.innerHTML="
 const $=id=>document.getElementById(id);
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const col=n=>"hsl("+([...n].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360)+" 50% 42%)";
-const pics={},decs={},disp={},bios={},DECS=["none","gold","rose","neon","ice","crown","sparkle","aurora","emerald","rainbow","inferno","mod","admin","owner"];
+const pics={},decs={},disp={},bios={},DECS=["none","gold","rose","neon","ice","crown","sparkle","aurora","emerald","rainbow","inferno","mod","admin","coowner","owner"];
 const dn=id=>disp[id]||names[id]||"Unknown";
-const fxs={},FX=["none","solid","gradient","flow","sparkle","snow","glow","stars","mod","admin","owner"],RK={mod:1,admin:2,owner:3},HEX=/^#[0-9a-f]{6}$/i;
+const fxs={},FX=["none","solid","gradient","flow","sparkle","snow","glow","stars","mod","admin","coowner","owner"],RK={mod:1,admin:2,coowner:3,owner:4},HEX=/^#[0-9a-f]{6}$/i;
 function bn(f,cls=""){f=f||{};const e=FX.includes(f.e)?f.e:"none",a=HEX.test(f.c1)?f.c1:"#0f766e",b=HEX.test(f.c2)?f.c2:"#7c5cff";return '<div class="ban fx-'+e+' '+cls+'" style="--c1:'+a+';--c2:'+b+'"></div>'}
 const decCls=d=>d&&d!="none"&&DECS.includes(d)?" d-"+d:"";
 const av=(id,cls="",d)=>{const u=pics[id],ok=u&&u.startsWith(SUPABASE_URL),nm=names[id]||(/^[0-9a-f-]{36}$/.test(id)?"Unknown":String(id));return '<div class="av '+cls+decCls(d===undefined?decs[id]:d)+'" style="background:'+col(String(id))+'">'+(ok?'<img alt="" src="'+esc(u)+'">':esc(nm[0]))+'</div>'};
@@ -514,7 +521,7 @@ const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img clas
 const tup=m=>[m.user_id,m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at,m.file_kind,m.file_path,m.file_name,m.file_size,m.file_type,m.voice_secs];
 function renderList(){
   const f=$("q").value.toLowerCase();
-  $("list").innerHTML=D.filter(c=>(c.name+" "+(c.group?"":dn(c.peer))).toLowerCase().includes(f)).map(c=>{
+  $("list").innerHTML=[...D].sort((a,b)=>tsOf(b)-tsOf(a)).filter(c=>(c.name+" "+(c.group?"":dn(c.peer))).toLowerCase().includes(f)).map(c=>{
     const l=[...c.msgs].reverse().find(m=>!blocked.has(m[6]));
     const prev=l?(l[0]==me?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||(l[8]=="voice"?"🎤 Voice message":l[9]?"📎 "+l[10]:"📷 Photo")):"No messages yet";
     return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.group?c.name:c.peer,stat(c))+
@@ -529,7 +536,7 @@ function renderMsgs(){
     if(!p||dayOf(m[7])!=dayOf(p[7])){h+='<div class="dsep">'+dayLabel(m[7])+'</div>';p=null}
     h+=p&&p[0]==m[0]
       ?'<div class="m c'+(m[0]==me?" mine":"")+'"><div class="gap"></div><div class="t">'+mb(m)+'</div></div>'
-      :'<div class="m'+(m[0]==me?" mine":"")+'" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b'+nst(m[0])+'>'+esc(dn(m[0]))+'</b><small>'+fmt(m[7])+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
+      :'<div class="m'+(m[0]==me?" mine":"")+'" data-u="'+esc(m[0])+'">'+av(m[0])+'<div><div class="hd"><b'+nst(m[0])+'>'+esc(dn(m[0]))+'</b>'+rtag(m[0])+'<small>'+fmt(m[7])+'</small></div><div class="t">'+mb(m)+'</div></div></div>';
     p=m;
   });
   if(mq)h='<div class="dsep">Results for “'+esc(mq)+'” <button id="clrq">Clear</button></div>'+h;
@@ -558,7 +565,7 @@ function addMsg(m){
   renderList();
 }
 async function load(){
-  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color),conversations(id,name,is_group)");
+  const {data:ms,error}=await sb.from("members").select("conversation_id,user_id,profiles(username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color,role,is_owner),conversations(id,name,is_group)");
   if(error)return alert(error.message);
   const map={};
   ms.forEach(r=>{
@@ -566,7 +573,10 @@ async function load(){
     const c=map[r.conversation_id]||(map[r.conversation_id]={id:r.conversation_id,raw:r.conversations.name,group:r.conversations.is_group,members:[],msgs:[],unread:0});
     c.members.push({id:r.user_id,name:r.profiles.username});
   });
+  const prevD=Object.fromEntries(D.map(c=>[c.id,c]));
   D=Object.values(map);
+  D.forEach(c=>{const p=prevD[c.id];if(p){c.unread=p.unread;c.born=p.born}else if(loaded)c.born=Date.now()});
+  loaded=true;
   D.forEach(c=>{const o=c.members.find(m=>m.id!=me)||c.members[0];c.peer=c.group?null:o.id;c.name=c.raw||(c.group?c.members.map(m=>dn(m.id)).join(", "):o.name)});
   const {data:bl}=await sb.from("blocks").select("blocked");blocked=new Set((bl||[]).map(x=>x.blocked));
   const {data:mm}=await sb.from("messages").select("*").order("created_at",{ascending:false}).limit(1000);
@@ -723,7 +733,7 @@ async function enter(u){
   if(error)return $("ae").textContent=error.message;
   uname=p.username;names[me]=uname;isOwner=!!p.is_owner;disc=p.discoverable!==false;
   if(p.banned_at){await sb.auth.signOut();return $("ae").textContent="You are banned from Talker."+(p.ban_reason?" Reason: "+p.ban_reason:"")}
-  myRank=p.is_owner?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;if(myRank>=1)staffCount();
+  myRank=p.is_owner?4:p.role=="coowner"?3:p.role=="admin"?2:p.role=="mod"?1:0;$("staffBtn").hidden=myRank<1;if(myRank>=1)staffCount();
   tmo=p.timeout_until?new Date(p.timeout_until).getTime():0;
   pts=p.points||0;paintPts();loadShop();setProf(me,p);
   $("un").textContent=dn(me);$("uh").textContent="@"+uname;$("myav").innerHTML=av(me,"on");
@@ -969,7 +979,7 @@ let fpage=0,ft;
 async function findPeople(reset){
   if(reset){fpage=0;$("fres").innerHTML="";}
   const q=$("fq").value.trim().replace(/[^\p{L}\p{N}_ \-]/gu,"").slice(0,32);
-  let qb=sb.from("profiles").select("id,username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color").neq("id",me).order("username").range(fpage*30,fpage*30+29);
+  let qb=sb.from("profiles").select("id,username,avatar_url,decoration,display_name,bio,effect,color1,color2,pronouns,status_text,name_color,role,is_owner").neq("id",me).order("username").range(fpage*30,fpage*30+29);
   if(q)qb=qb.or('username.ilike."*'+q+'*",display_name.ilike."*'+q+'*"');
   if(blocked.size)qb=qb.not("id","in","("+[...blocked].join(",")+")");
   const {data,error}=await qb;
@@ -1115,8 +1125,8 @@ $("in").addEventListener("input",()=>{cs=0;updCmds()});
 $("cmds").onmousedown=e=>e.preventDefault();
 $("cmds").onclick=e=>{const b=e.target.closest("button");if(b)pickCmd(+b.dataset.i)};
 let myRank=0,tmo=0,sqt;
-const ROLE=["user","mod","admin","owner"];
-const rankOf=r=>r.is_owner?3:r.role=="admin"?2:r.role=="mod"?1:0;
+const ROLE=["user","mod","admin","co-owner","owner"];
+const rankOf=r=>r.is_owner?4:r.role=="coowner"?3:r.role=="admin"?2:r.role=="mod"?1:0;
 function chkTimeout(){
   if(!cur)return;
   const t=tmo>Date.now();
@@ -1128,8 +1138,8 @@ async function myStatus(r){
   if(r.banned_at){await sb.auth.signOut();alert("You have been banned from Talker."+(r.ban_reason?" Reason: "+r.ban_reason:""));location.reload();return}
   tmo=r.timeout_until?new Date(r.timeout_until).getTime():0;
   if(typeof r.points=="number"){pts=r.points;paintPts();if(!$("shop").hidden)drawShop()}
-  const rk=r.is_owner?3:r.role=="admin"?2:r.role=="mod"?1:0;
-  if(rk!=myRank){myRank=rk;$("staffBtn").hidden=rk<1}
+  const rk=r.is_owner?4:r.role=="coowner"?3:r.role=="admin"?2:r.role=="mod"?1:0;
+  if(rk!=myRank){myRank=rk;$("staffBtn").hidden=rk<1;paintPts()}
   if(tmo>Date.now()&&call)leave();
   chkTimeout();
 }
@@ -1144,7 +1154,7 @@ async function staffList(){
     return '<div class="row" style="cursor:default">'+av(u.id)+'<div class="ri"><b>'+esc(u.display_name||u.username)+"</b><small>@"+esc(u.username)+"</small>"+(tags?"<div>"+tags+"</div>":"")+"</div>"
       +(other&&myRank>=1&&rk<myRank?btn("t","Time out",'⏱'):"")
       +(other&&myRank>=2&&rk<myRank?(u.banned_at?btn("u","Unban","Unban"):btn("b","Ban","🚫")):"")
-      +(other&&myRank>=3&&rk<3?btn("r","Change role","⭐"):"")+"</div>";
+      +(other&&myRank>=3&&rk<myRank?btn("r","Change role","⭐"):"")+"</div>";
   }).join("")||'<div class="empty">No users found.</div>';
 }
 $("sres").onclick=async e=>{
@@ -1164,8 +1174,8 @@ $("sres").onclick=async e=>{
     if(!confirm("Unban @"+u+"?"))return;
     r=await sb.rpc("staff_unban",{p_user:id});
   }else if(a=="r"){
-    const ro=prompt("New role for @"+u+": user, mod or admin","mod");if(ro===null)return;
-    r=await sb.rpc("staff_set_role",{p_user:id,p_role:ro.trim().toLowerCase()});
+    const ro=prompt("New role for @"+u+": user, mod, admin"+(myRank>=4?" or coowner":""),"mod");if(ro===null)return;
+    r=await sb.rpc("staff_set_role",{p_user:id,p_role:ro.trim().toLowerCase().replace("-","")});
   }
   if(r&&r.error)return alert(r.error.message);
   staffList();
@@ -1175,7 +1185,7 @@ $("sclose").onclick=()=>$("staff").hidden=true;
 $("sq").oninput=()=>{clearTimeout(sqt);sqt=setTimeout(staffList,300)};
 let pts=0,SHOP=[],owned=new Set();
 const locked=id=>SHOP.some(i=>i.id==id)&&!owned.has(id);
-const paintPts=()=>{$("shopBtn").textContent="⭐ "+(isOwner?"∞":pts)};
+const paintPts=()=>{$("shopBtn").textContent="⭐ "+(myRank>=3?"∞":pts)};
 async function loadShop(){
   const [a,b]=await Promise.all([sb.from("shop_items").select("*").order("cost"),sb.from("unlocks").select("item_id")]);
   SHOP=a.data||[];owned=new Set((b.data||[]).map(x=>x.item_id));
@@ -1186,11 +1196,11 @@ function beat(){
   if(n)sb.rpc("call_heartbeat",{p_cid:call.cid}).then(r=>{if(r.data>0){pts+=r.data;paintPts()}});
 }
 function drawShop(){
-  $("shopbal").textContent=isOwner?"You have infinite points (owner)":"You have "+pts+" points";
+  $("shopbal").textContent=myRank>=3?"You have infinite points":"You have "+pts+" points";
   $("shoplist").innerHTML=SHOP.map(i=>{
     const dec=i.kind=="decoration",key=i.id.slice(dec?4:3),own=owned.has(i.id);
     const prev=dec?av(me,"",key):bn({e:key,c1:"#0f766e",c2:"#7c5cff"},"mini");
-    const act=own?"<button disabled>Owned</button>":(isOwner||pts>=i.cost)?'<button class="fm" data-b="'+i.id+'">'+(isOwner?"Unlock":"Buy "+i.cost)+"</button>":"<button disabled>"+i.cost+" (need "+(i.cost-pts)+" more)</button>";
+    const act=own?"<button disabled>Owned</button>":(myRank>=3||pts>=i.cost)?'<button class="fm" data-b="'+i.id+'">'+(myRank>=3?"Unlock":"Buy "+i.cost)+"</button>":"<button disabled>"+i.cost+" (need "+(i.cost-pts)+" more)</button>";
     return '<div class="row" style="cursor:default">'+prev+'<div class="ri"><b>'+esc(i.name)+"</b><small>"+(dec?"Avatar decoration":"Profile background")+"</small></div>"+act+"</div>";
   }).join("")||'<div class="empty">The shop is empty.</div>';
 }
@@ -1199,7 +1209,7 @@ $("shopclose").onclick=()=>$("shop").hidden=true;
 $("shoplist").onclick=async e=>{
   const b=e.target.closest("[data-b]");if(!b)return;
   const i=SHOP.find(x=>x.id==b.dataset.b);
-  if(!i||!confirm(isOwner?"Unlock "+i.name+" for free?":"Buy "+i.name+" for "+i.cost+" points?"))return;
+  if(!i||!confirm(myRank>=3?"Unlock "+i.name+" for free?":"Buy "+i.name+" for "+i.cost+" points?"))return;
   const r=await sb.rpc("buy_item",{p_item:i.id});
   if(r.error)return alert(r.error.message);
   owned.add(i.id);pts=r.data;paintPts();drawShop();
@@ -1323,8 +1333,11 @@ $("rsend").onclick=async()=>{
   if(r.error)return $("rerr").textContent=r.error.message;
   $("rpt").hidden=true;toast("Thanks. Staff will review your report.");
 };
+const rolemap={};
+const rtag=id=>rolemap[id]?'<span class="tag staff">'+rolemap[id]+"</span>":"";
 function setProf(id,r){
   if(r.username)names[id]=r.username;
+  if("role" in r||"is_owner" in r)rolemap[id]=r.is_owner?"owner":r.role=="coowner"?"co-owner":r.role=="admin"?"admin":r.role=="mod"?"mod":"";
   if("avatar_url" in r)pics[id]=r.avatar_url;
   if("decoration" in r)decs[id]=r.decoration;
   if("display_name" in r)disp[id]=r.display_name;
@@ -1415,6 +1428,11 @@ $("vcancel").onclick=()=>stopVoice(true);
 $("vsend").onclick=()=>stopVoice(false);
 $("fbtn").onclick=()=>$("filef").click();
 $("filef").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendFile(f)};
+let loaded=false;
+function tsOf(c){
+  for(let i=c.msgs.length-1;i>=0;i--){const m=c.msgs[i];if(!blocked.has(m[6]))return new Date(m[7]).getTime()}
+  return c.born||0;
+}
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -1427,7 +1445,7 @@ function drawPick(){$("dpick").innerHTML=DECS.filter(d=>(RK[d]||0)<=myRank).map(
 $("dpick").onclick=e=>{const b=e.target.closest(".dp");if(!b)return;if(locked("dec:"+b.dataset.d))return alert("Unlock this in the ⭐ shop first.");pdec=b.dataset.d;drawPick();const a=$("pav").querySelector(".av");if(a){DECS.forEach(x=>a.classList.remove("d-"+x));if(pdec!="none")a.classList.add("d-"+pdec)}};
 $("edit").onclick=()=>{$("pn").value=uname;$("pd").value=disp[me]||"";$("thm").value=TH.mode;$("pdisc").checked=disc;$("ppr").value=pron[me]||"";$("pstx").value=stxt[me]||"";pnc=HEX.test(ncol[me])?ncol[me]:null;$("pnc").value=pnc||"#ffffff";$("pstat").value=UI.status;$("pb").value=bios[me]||"";const f=fxs[me]||{};pfx={e:FX.includes(f.e)?f.e:"none",c1:HEX.test(f.c1)?f.c1:"#0f766e",c2:HEX.test(f.c2)?f.c2:"#7c5cff"};$("pc1").value=pfx.c1;$("pc2").value=pfx.c2;drawFx();pdec=decs[me]||"none";$("pav").innerHTML=av(me,"",pdec);drawPick();pend=null;$("pe").textContent="";$("prof").hidden=false};
 function card(u){
-  $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cdn").style.color=HEX.test(ncol[u])?ncol[u]:"";$("cun").textContent="@"+(names[u]||"")+(pron[u]?" ("+pron[u]+")":"");$("cst").textContent=stxt[u]?"“"+stxt[u]+"”":"";
+  $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("crole").innerHTML=rtag(u);$("cdn").style.color=HEX.test(ncol[u])?ncol[u]:"";$("cun").textContent="@"+(names[u]||"")+(pron[u]?" ("+pron[u]+")":"");$("cst").textContent=stxt[u]?"“"+stxt[u]+"”":"";
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);const id=u,b=$("cblock"),d=$("cdm");d.hidden=!id||id==me;d.dataset.id=id;b.hidden=!id||id==me;b.dataset.id=id||"";b.textContent=blocked.has(id)?"Unblock":"Block";$("card").hidden=false;
 }
 $("msgs").onclick=e=>{const fb=e.target.closest(".fl");if(fb){dlFile(fb);return}if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):ab.dataset.a=="r"?reportMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
