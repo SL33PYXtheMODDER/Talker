@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://dmgzbhnixpmrshwuwawj.supabase.co; media-src 'self' blob:; connect-src 'self' https://dmgzbhnixpmrshwuwawj.supabase.co wss://dmgzbhnixpmrshwuwawj.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://dmgzbhnixpmrshwuwawj.supabase.co; media-src 'self' blob: https://dmgzbhnixpmrshwuwawj.supabase.co; connect-src 'self' https://dmgzbhnixpmrshwuwawj.supabase.co wss://dmgzbhnixpmrshwuwawj.supabase.co https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Talker</title>
@@ -276,6 +276,16 @@ body{font-size:var(--fs,15px)}
 [data-layout="classic"] .m.mine .spoil.on{background:var(--panel);color:inherit}
 [data-motion="off"] *,[data-motion="off"] *::before,[data-motion="off"] *::after{animation:none!important;transition:none!important}
 #toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--text);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.35);max-width:92%;text-align:center}
+#vbar{display:flex;align-items:center;gap:10px;flex:1;padding:0 10px}
+.rdot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:rpulse 1s ease-in-out infinite}
+@keyframes rpulse{50%{opacity:.25}}
+.compose #vsend{width:auto;padding:0 16px;background:var(--accent);color:var(--on);font-size:14px}
+.vm{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.vm audio{max-width:260px;height:40px}
+.fl{display:flex;align-items:center;gap:10px;margin-top:6px;background:rgba(0,0,0,.14);border-radius:14px;padding:8px 12px;text-align:left;max-width:300px;color:inherit}
+.fl b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.fl small{opacity:.7;color:inherit;flex:none}
+@media (max-width:480px){.compose button{width:34px;height:34px;font-size:16px}.compose #send{padding:0 14px}}
 .brand button#staffBtn{width:auto;padding:0 10px}
 .rep{background:var(--panel);border-radius:18px;padding:12px 14px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
 .rep .rq{background:var(--bub);border-radius:12px;padding:8px 12px;white-space:pre-wrap;word-break:break-word}
@@ -328,8 +338,12 @@ body{font-size:var(--fs,15px)}
     <div class="compose">
       <button id="att" title="Send an image" aria-label="Send an image">📎</button>
       <input id="imgf" type="file" accept="image/*" hidden>
+      <button id="fbtn" title="Send a file" aria-label="Send a file">🗂</button>
+      <input id="filef" type="file" hidden>
       <button id="emj" title="Emoji" aria-label="Emoji">😊</button>
       <input id="in" autocomplete="off" maxlength="2000" aria-label="Message">
+      <div id="vbar" hidden><span class="rdot"></span><b id="vtime">0:00</b><span style="flex:1"></span><button id="vcancel" aria-label="Cancel recording">✕</button><button id="vsend" aria-label="Send voice message">Send</button></div>
+      <button id="vbtn" title="Record a voice message" aria-label="Record a voice message">🎤</button>
       <button id="send">Send</button>
     </div>
   </section>
@@ -483,13 +497,13 @@ const now=()=>new Date().toTimeString().slice(0,5);
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let me,uname,D=[],cur,muted=false,deaf=false,names={},chans={},call=null,ring=null,pend=null,pdec="none",pfx={e:"none",c1:"#0f766e",c2:"#7c5cff"},isOwner=false,disc=true,pext="jpg";
 const fmt=t=>UI.clock=="12"?new Date(t).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):new Date(t).toTimeString().slice(0,5);
-const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+(m[0]==me?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':(m[3]?'<span class="acts"><button data-a="r" data-id="'+m[3]+'" title="Report this message" aria-label="Report this message">⚑</button></span>':""));
-const tup=m=>[m.user_id,m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at];
+const mb=m=>rich(m[1]||"")+(m[5]?' <small>(edited)</small>':"")+(m[4]?'<img class="pic" data-p="'+esc(m[4])+'" alt="Shared image">':"")+fileHtml(m)+(m[0]==me?'<span class="acts"><button data-a="e" data-id="'+m[3]+'" title="Edit" aria-label="Edit message">✎</button><button data-a="d" data-id="'+m[3]+'" title="Delete" aria-label="Delete message">🗑</button></span>':(m[3]?'<span class="acts"><button data-a="r" data-id="'+m[3]+'" title="Report this message" aria-label="Report this message">⚑</button></span>':""));
+const tup=m=>[m.user_id,m.body,fmt(m.created_at),m.id,m.image_path,m.edited_at,m.user_id,m.created_at,m.file_kind,m.file_path,m.file_name,m.file_size,m.file_type,m.voice_secs];
 function renderList(){
   const f=$("q").value.toLowerCase();
   $("list").innerHTML=D.filter(c=>(c.name+" "+(c.group?"":dn(c.peer))).toLowerCase().includes(f)).map(c=>{
     const l=[...c.msgs].reverse().find(m=>!blocked.has(m[6]));
-    const prev=l?(l[0]==me?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||"📷 Photo"):"No messages yet";
+    const prev=l?(l[0]==me?"You: ":(c.group?dn(l[0])+": ":""))+(l[1]||(l[8]=="voice"?"🎤 Voice message":l[9]?"📎 "+l[10]:"📷 Photo")):"No messages yet";
     return '<div class="row'+(c===cur?" act":"")+'" data-id="'+c.id+'">'+av(c.group?c.name:c.peer,stat(c))+
       '<div class="ri"><b'+(c.group?"":nst(c.peer))+'>'+esc(c.group?c.name:dn(c.peer))+(muted2.has(c.id)?" 🔕":"")+(c.group?' <span class="tag">group</span>':"")+'</b><small>'+esc(prev)+'</small></div>'+
       (c.unread?'<span class="bd">'+c.unread+'</span>':"")+'</div>';
@@ -507,7 +521,7 @@ function renderMsgs(){
   });
   if(mq)h='<div class="dsep">Results for “'+esc(mq)+'” <button id="clrq">Clear</button></div>'+h;
   $("msgs").innerHTML=h||'<div class="empty">No messages yet. Say hi to start the conversation.</div>';
-  $("msgs").scrollTop=1e9;hydrate();
+  $("msgs").scrollTop=1e9;hydrate();hydrateAudio();
 }
 function open(id){
   if(cur)drafts[cur.id]=$("in").value;
@@ -822,7 +836,7 @@ function beep(f,d,t=0){
 }
 function ping(c,m){
   beep(880,.1);beep(1175,.12,.12);
-  if(document.hidden&&window.Notification&&Notification.permission=="granted"&&UI.status!="dnd")try{new Notification(dn(m.user_id)+(c.group?" in "+c.name:""),{body:m.body||"📷 Photo"})}catch(e){}
+  if(document.hidden&&window.Notification&&Notification.permission=="granted"&&UI.status!="dnd")try{new Notification(dn(m.user_id)+(c.group?" in "+c.name:""),{body:m.body||(m.file_kind=="voice"?"🎤 Voice message":m.file_path?"📎 "+m.file_name:"📷 Photo")})}catch(e){}
 }
 function paintHead(){
   if(!cur)return;
@@ -854,7 +868,7 @@ function rmMsg(id){
 async function editMsg(id){
   const m=cur.msgs.find(x=>x[3]==id);if(!m)return;
   const t=prompt("Edit message",m[1]||"");if(t===null)return;
-  const v=t.trim();if(!v&&!m[4])return;
+  const v=t.trim();if(!v&&!m[4]&&!m[9])return;
   const r=await sb.from("messages").update({body:v||null,edited_at:new Date().toISOString()}).eq("id",id).select().single();
   if(r.error)return alert(r.error.message);
   updMsg(r.data);
@@ -1121,6 +1135,7 @@ async function staffList(){
   }).join("")||'<div class="empty">No users found.</div>';
 }
 $("sres").onclick=async e=>{
+  const fb=e.target.closest(".fl");if(fb)return dlFile(fb);
   const rb=e.target.closest("button[data-r]");if(rb)return reportAction(rb);
   const b=e.target.closest("button[data-a]");if(!b)return;
   const {a,id,u}=b.dataset;let r;
@@ -1243,9 +1258,9 @@ async function reportsList(){
   $("sres").innerHTML=r.data.map(x=>{
     const can=x.reported_id&&x.reported_id!=me&&x.reported_rank<myRank;
     const btn=(k,l,cls)=>'<button '+(cls?'class="'+cls+'" ':"")+'data-r="'+k+'" data-id="'+x.id+'" data-uid="'+(x.reported_id||"")+'" data-u="'+esc(x.reported_name||"")+'">'+l+"</button>";
-    const ctx=(x.context||[]).map(c=>"<div><b>@"+esc(c.username)+":</b> "+esc(c.body||"(image)")+"</div>").join("");
+    const ctx=(x.context||[]).map(c=>"<div><b>@"+esc(c.username)+":</b> "+esc(c.body||"(attachment)")+"</div>").join("");
     return '<div class="rep"><div><b>'+esc((RREASONS.find(a=>a[0]==x.reason)||[0,x.reason])[1])+'</b> <span class="tag">'+x.status+'</span><br><small>@'+esc(x.reporter_name||"deleted user")+" reported @"+esc(x.reported_name||"deleted user")+" on "+esc(new Date(x.created_at).toLocaleString())+"</small></div>"
-      +'<div class="rq">'+(x.body?esc(x.body):"")+(x.image_path?'<img class="pic" data-p="'+esc(x.image_path)+'" alt="Reported image">':"")+(!x.body&&!x.image_path?"(empty message)":"")+"</div>"
+      +'<div class="rq">'+(x.body?esc(x.body):"")+(x.image_path?'<img class="pic" data-p="'+esc(x.image_path)+'" alt="Reported image">':"")+(x.file_path?(x.file_kind=="voice"?'<audio controls preload="none" data-f="'+esc(x.file_path)+'"></audio>':'<button class="fl" data-fp="'+esc(x.file_path)+'" data-fn="'+esc(x.file_name||"file")+'"><span>📄</span><b>'+esc(x.file_name||"file")+"</b></button>"):"")+(!x.body&&!x.image_path&&!x.file_path?"(empty message)":"")+"</div>"
       +(x.note?"<div><small>Reporter note: "+esc(x.note)+"</small></div>":"")
       +(ctx?"<details><summary>Messages before it</summary>"+ctx+"</details>":"")
       +(x.status!="open"?"<div><small>"+x.status+(x.handled_by_name?" by @"+esc(x.handled_by_name):"")+(x.resolution?": "+esc(x.resolution):"")+"</small></div>":"")
@@ -1253,6 +1268,7 @@ async function reportsList(){
       +(can&&x.message_id?btn("del","🗑 Delete message"):"")+(can?btn("tmo","⏱ Time out"):"")+(can&&myRank>=2?btn("ban","🚫 Ban"):"")+"</div></div>";
   }).join("")||'<div class="empty">No '+$("rst").value+' reports.</div>';
   document.querySelectorAll("#sres img[data-p]").forEach(i=>signed(i.dataset.p).then(u=>{if(u)i.src=u}));
+  document.querySelectorAll("#sres audio[data-f]").forEach(a=>signedF(a.dataset.f).then(u=>{if(u)a.src=u}));
 }
 async function reportAction(b){
   const {r,id,uid,u}=b.dataset;let x;
@@ -1305,6 +1321,87 @@ function setProf(id,r){
   if("status_text" in r)stxt[id]=r.status_text;
   if("name_color" in r)ncol[id]=r.name_color;
 }
+const EXT={pdf:"application/pdf",txt:"text/plain",csv:"text/csv",zip:"application/zip",json:"application/json",doc:"application/msword",docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",mp3:"audio/mpeg",wav:"audio/wav",ogg:"audio/ogg",m4a:"audio/mp4",mp4:"video/mp4",webm:"video/webm"};
+const MAXF=10485760,urlsF={};
+let rec=null;
+const signedF=p=>urlsF[p]||(urlsF[p]=sb.storage.from("chat-files").createSignedUrl(p,86400).then(r=>r.data&&r.data.signedUrl));
+const fsize=n=>n>1048576?(n/1048576).toFixed(1)+" MB":Math.max(1,Math.round(n/1024))+" KB";
+const dur=s=>Math.floor(s/60)+":"+String(s%60).padStart(2,"0");
+function hydrateAudio(){document.querySelectorAll("#msgs audio[data-f]").forEach(a=>signedF(a.dataset.f).then(u=>{if(u)a.src=u}))}
+function fileHtml(m){
+  if(!m[9])return "";
+  if(m[8]=="voice")return '<div class="vm"><audio controls preload="none" data-f="'+esc(m[9])+'"></audio><small>'+dur(m[13]||0)+"</small></div>";
+  return '<button class="fl" data-fp="'+esc(m[9])+'" data-fn="'+esc(m[10]||"file")+'" title="Download"><span>📄</span><b>'+esc(m[10]||"file")+"</b><small>"+fsize(m[11]||0)+"</small></button>";
+}
+async function dlFile(b){
+  toast("Only open files from people you trust.");
+  const r=await sb.storage.from("chat-files").createSignedUrl(b.dataset.fp,60,{download:b.dataset.fn});
+  if(r.error||!r.data)return toast("Could not download that file.");
+  const a=document.createElement("a");a.href=r.data.signedUrl;a.rel="noopener noreferrer";document.body.appendChild(a);a.click();a.remove();
+}
+async function upFile(cid,blob,name,ct){
+  const path=cid+"/"+crypto.randomUUID()+"-"+name;
+  const r=await sb.storage.from("chat-files").upload(path,blob,{contentType:ct});
+  if(r.error)throw r.error;
+  return path;
+}
+async function sendFile(f){
+  if(!cur)return;
+  if(tmo>Date.now())return toast("You are timed out.");
+  const ext=(f.name.split(".").pop()||"").toLowerCase();
+  if(/^(png|jpe?g|gif|webp)$/.test(ext))return sendImg(f);
+  const ct=EXT[ext];
+  if(!ct)return toast("That file type is not allowed. Allowed: pdf, txt, csv, zip, json, doc, docx, xlsx, pptx, mp3, wav, ogg, m4a, mp4, webm.");
+  if(f.size>MAXF)return toast("Files can be at most 10 MB.");
+  const c=cur,cap=$("in").value.trim()||null,safe=f.name.replace(/[^\w.\-]+/g,"_").slice(-80);
+  toast("Uploading "+f.name+"…");
+  try{
+    const path=await upFile(c.id,f,safe,ct);
+    const r=await sb.from("messages").insert({conversation_id:c.id,body:cap,file_kind:"file",file_path:path,file_name:f.name.slice(0,120),file_size:f.size,file_type:ct}).select().single();
+    if(r.error)throw r.error;
+    $("in").value="";addMsg(r.data);
+  }catch(e){toast(e.message)}
+}
+function vtick(){const s=Math.floor((Date.now()-rec.t0)/1000);$("vtime").textContent=dur(s);if(s>=300)stopVoice(false)}
+async function startVoice(){
+  if(!cur||rec)return;
+  if(tmo>Date.now())return toast("You are timed out.");
+  if(!navigator.mediaDevices||!window.MediaRecorder)return toast("Voice messages are not supported in this browser.");
+  let stream;
+  try{stream=await navigator.mediaDevices.getUserMedia({audio:true})}catch(e){return toast("Allow microphone access to record.")}
+  const mt=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus","audio/mp4"].find(t=>MediaRecorder.isTypeSupported(t))||"";
+  const mr=new MediaRecorder(stream,mt?{mimeType:mt}:{}),chunks=[];
+  rec={mr,stream,chunks,t0:Date.now(),cid:cur.id,mt:mr.mimeType||mt,cancel:false};
+  mr.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  mr.onstop=finishVoice;
+  mr.start();
+  $("vbar").hidden=false;$("in").hidden=true;$("vbtn").hidden=true;$("send").hidden=true;$("vtime").textContent="0:00";
+  rec.iv=setInterval(vtick,250);
+}
+function stopVoice(cancel){if(!rec)return;rec.cancel=cancel;if(rec.mr.state!="inactive")rec.mr.stop()}
+async function finishVoice(){
+  const r=rec;rec=null;
+  clearInterval(r.iv);r.stream.getTracks().forEach(t=>t.stop());
+  $("vbar").hidden=true;$("in").hidden=false;$("vbtn").hidden=false;$("send").hidden=false;
+  if(r.cancel)return;
+  const secs=Math.round((Date.now()-r.t0)/1000);
+  if(secs<1)return toast("That recording was too short.");
+  const base=(r.mt||"audio/webm").split(";")[0],ext=base.includes("mp4")?"m4a":base.includes("ogg")?"ogg":"webm";
+  const blob=new Blob(r.chunks,{type:base}),c=D.find(x=>x.id==r.cid);
+  if(!c)return;
+  toast("Sending voice message…");
+  try{
+    const path=await upFile(c.id,blob,"voice."+ext,base);
+    const m=await sb.from("messages").insert({conversation_id:c.id,file_kind:"voice",file_path:path,file_name:"Voice message",file_size:blob.size,file_type:base,voice_secs:Math.min(secs,600)}).select().single();
+    if(m.error)throw m.error;
+    addMsg(m.data);
+  }catch(e){toast(e.message)}
+}
+$("vbtn").onclick=startVoice;
+$("vcancel").onclick=()=>stopVoice(true);
+$("vsend").onclick=()=>stopVoice(false);
+$("fbtn").onclick=()=>$("filef").click();
+$("filef").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)sendFile(f)};
 function shrink(f){return new Promise((ok,no)=>{const i=new Image();i.onload=()=>{const s=256,c=document.createElement("canvas");c.width=c.height=s;const k=Math.max(s/i.width,s/i.height),w=i.width*k,h=i.height*k;c.getContext("2d").drawImage(i,(s-w)/2,(s-h)/2,w,h);c.toBlob(b=>b?ok(b):no(new Error("Could not read image")),"image/jpeg",.85)};i.onerror=()=>no(new Error("Could not read image"));i.src=URL.createObjectURL(f)})}
 function drawFx(){
   $("pban").innerHTML=bn(pfx);
@@ -1320,7 +1417,7 @@ function card(u){
   $("cav").innerHTML=av(u);$("cdn").textContent=dn(u);$("cdn").style.color=HEX.test(ncol[u])?ncol[u]:"";$("cun").textContent="@"+(names[u]||"")+(pron[u]?" ("+pron[u]+")":"");$("cst").textContent=stxt[u]?"“"+stxt[u]+"”":"";
   $("cbio").textContent=bios[u]||"No bio yet.";$("cban").innerHTML=bn(fxs[u]);const id=u,b=$("cblock"),d=$("cdm");d.hidden=!id||id==me;d.dataset.id=id;b.hidden=!id||id==me;b.dataset.id=id||"";b.textContent=blocked.has(id)?"Unblock":"Block";$("card").hidden=false;
 }
-$("msgs").onclick=e=>{if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):ab.dataset.a=="r"?reportMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
+$("msgs").onclick=e=>{const fb=e.target.closest(".fl");if(fb){dlFile(fb);return}if(e.target.classList.contains("spoil")){e.target.classList.toggle("on");return}if(e.target.id=="clrq"){mq="";renderMsgs();return}const ab=e.target.closest("[data-a]");if(ab){const id=+ab.dataset.id;ab.dataset.a=="e"?editMsg(id):ab.dataset.a=="r"?reportMsg(id):delMsg(id);return}if(e.target.matches(".pic")){$("lbi").src=e.target.src;$("lb").hidden=false;return}const m=e.target.closest(".m");if(m&&e.target.closest(".av,.hd b"))card(m.dataset.u)};
 $("hav").onclick=()=>{if(cur&&!cur.group)card(cur.peer)};
 $("cclose").onclick=()=>$("card").hidden=true;
 $("pclose").onclick=()=>$("prof").hidden=true;
